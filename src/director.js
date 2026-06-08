@@ -22,8 +22,10 @@ const ACTION_TYPES = {
  */
 export async function injectDirector(outline = "") {
 	let text = "";
-	if (outline && String(outline).trim()) {
-		text = `<director>\n${String(outline).trim()}\n</director>`;
+	const trimmed = String(outline ?? "").trim();
+	if (trimmed) {
+		const template = extensionSettings.injectionTemplate || "<director>\n{{outline}}\n</director>";
+		text = template.includes("{{outline}}") ? template.replaceAll("{{outline}}", trimmed) : `${template}\n${trimmed}`;
 	}
 	const role = getExtensionPromptRoleByName(extensionSettings.injectionRole ?? "system");
 	const depth = Math.max(0, Number(extensionSettings.injectionDepth) || 0);

@@ -1,5 +1,6 @@
 import { saveSettingsDebounced } from "../../../../../../script.js";
 import { getContext } from "../../../../../../scripts/extensions.js";
+import { callGenericPopup, POPUP_TYPE } from "../../../../../../scripts/popup.js";
 
 import { extensionSettings, extensionFolderPath } from "../../index.js";
 import { defaultSettings } from "./defaultSettings.js";
@@ -52,6 +53,7 @@ function setInitialValues() {
 	$("#director_response_length").val(extensionSettings.responseLength ?? 0);
 	$("#director_injection_depth").val(extensionSettings.injectionDepth ?? 0);
 	$("#director_injection_role").val(extensionSettings.injectionRole ?? "system");
+	$("#director_injection_template").val(extensionSettings.injectionTemplate ?? "");
 	$("#director_number_of_messages").val(extensionSettings.numberOfMessages ?? 10);
 	populateConnectionProfiles();
 	populateCompletionPresets();
@@ -132,6 +134,33 @@ function registerListeners() {
 		extensionSettings.injectionRole = String($(this).val());
 		saveSettingsDebounced();
 	});
+	$("#director_injection_template").on("input", function () {
+		extensionSettings.injectionTemplate = String($(this).val());
+		saveSettingsDebounced();
+	});
+	$("#director_reset_defaults").on("click", resetToDefaults);
+}
+
+/**
+ * Resets the director settings to defaults, preserving the connection profile + preset (the
+ * environment-specific model choice), then re-renders the UI.
+ */
+async function resetToDefaults() {
+	const confirmed = await callGenericPopup("Reset Director settings to defaults? (keeps the connection profile and preset)", POPUP_TYPE.CONFIRM);
+	if (!confirmed) return;
+
+	const preserved = {
+		selectedProfile: extensionSettings.selectedProfile,
+		selectedCompletionPreset: extensionSettings.selectedCompletionPreset,
+	};
+	for (const [key, value] of Object.entries(defaultSettings)) {
+		extensionSettings[key] = structuredClone(value);
+	}
+	Object.assign(extensionSettings, preserved);
+
+	saveSettingsDebounced();
+	setInitialValues();
+	window.toastr?.success?.("Director settings reset to defaults.");
 }
 
 /** @returns {boolean} Whether the director is enabled. */

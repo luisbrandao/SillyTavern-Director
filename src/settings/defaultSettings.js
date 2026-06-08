@@ -39,6 +39,9 @@ export const defaultSettings = {
 	// depth 0 + role system = appended at the end of the chat (the "end of the RP text").
 	injectionDepth: 0,
 	injectionRole: injectionRoles.SYSTEM,
+	// Template wrapping the outline when injected into the main reply. {{outline}} is replaced with
+	// the generated outline. Edit this to change the tag/format or add guiding instructions.
+	injectionTemplate: "<director>\n{{outline}}\n</director>",
 
 	// Number of recent chat messages to feed the director pass as context.
 	numberOfMessages: 10,
