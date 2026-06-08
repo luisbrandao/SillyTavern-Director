@@ -1,0 +1,47 @@
+.director_preview {
+	margin: 5px 0;
+	font-size: smaller;
+	border-left: 3px solid var(--SmartThemeQuoteColor);
+	padding-left: 8px;
+	opacity: 0.95;
+}
+
+.director_preview details > summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	cursor: pointer;
+	font-weight: bold;
+	list-style: none;
+}
+
+.director_preview .director_controls {
+	display: flex;
+	gap: 10px;
+	opacity: 0.7;
+}
+
+.director_preview .director_btn {
+	cursor: pointer;
+	transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.director_preview .director_btn:hover {
+	opacity: 1;
+	color: var(--SmartThemeQuoteColor);
+}
+
+.director_preview .director_btn_delete:hover {
+	color: #a90000;
+}
+
+.director_preview .director_outline {
+	margin-top: 5px;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+}
+
+.director-settings .flex1 {
+	flex: 1;
+}

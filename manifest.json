@@ -1,0 +1,11 @@
+{
+	"display_name": "Director",
+	"loading_order": 2,
+	"requires": [],
+	"optional": [],
+	"js": "index.js",
+	"css": "style.css",
+	"author": "Techmago",
+	"version": "0.1.0",
+	"homePage": "https://github.com/luisbrandao/SillyTavern-Director"
+}

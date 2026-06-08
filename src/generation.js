@@ -1,0 +1,136 @@
+import { chat } from "../../../../../script.js";
+import { getContext } from "../../../../../scripts/extensions.js";
+import { extensionSettings } from "../index.js";
+import { debug, warn } from "../lib/utils.js";
+
+/**
+ * Resolves a connection profile id by name. "current" => the active profile.
+ * @param {object} ctx
+ * @param {string} name
+ * @returns {string|null}
+ */
+function getProfileIdByName(ctx, name) {
+	const cm = ctx?.extensionSettings?.connectionManager;
+	if (!cm) return null;
+	if (name === "current") return cm.selectedProfile;
+	const p = cm.profiles?.find((x) => x.name === name);
+	return p ? p.id : null;
+}
+
+/**
+ * Resolves the max output tokens a completion preset defines (so the director response isn't
+ * silently truncated). Chat-completion presets use `openai_max_tokens`; text completion `genamt`.
+ * @returns {number|null}
+ */
+function resolvePresetMaxTokens(ctx, profile, presetName) {
+	if (!presetName) return null;
+	try {
+		const isCc = profile?.mode === "cc";
+		const presetManager = ctx.getPresetManager(isCc ? "openai" : "textgenerationwebui");
+		const preset = presetManager?.getCompletionPresetByName?.(presetName);
+		if (!preset) return null;
+		const max = isCc ? preset.openai_max_tokens : preset.genamt;
+		return typeof max === "number" && max > 0 ? max : null;
+	} catch (e) {
+		warn("Could not resolve preset max tokens:", e?.message);
+		return null;
+	}
+}
+
+/** Builds the director system prompt from the character card + user persona. */
+function buildDirectorSystemPrompt(ctx) {
+	const parts = [];
+	try {
+		const char = ctx.characters && ctx.characterId != null ? ctx.characters[ctx.characterId] : null;
+		if (char) {
+			if (char.description) parts.push(String(char.description).trim());
+			if (char.personality) parts.push(`Personality: ${String(char.personality).trim()}`);
+			if (char.scenario) parts.push(`Scenario: ${String(char.scenario).trim()}`);
+		}
+		const fields = ctx.getCharacterCardFields?.();
+		if (fields?.persona) parts.push(`User persona: ${String(fields.persona).trim()}`);
+	} catch (e) {
+		warn("Failed to build director system prompt:", e?.message);
+	}
+	return parts.filter(Boolean).join("\n\n").trim();
+}
+
+// Strip tracker/director blocks out of message text before feeding history to the director.
+const BLOCK_RE = /<(?:tracker|director)>[\s\S]*?<\/(?:tracker|director)>/gi;
+
+/** Builds the recent chat history as chat-completion messages (oldest -> newest). */
+function buildHistory(mesNum) {
+	const n = Math.max(1, extensionSettings.numberOfMessages || 10);
+	return chat
+		.filter((c, index) => !c.is_system && index <= mesNum)
+		.slice(-n)
+		.map((c) => ({
+			role: c.is_user ? "user" : "assistant",
+			content: String(c.mes || "").replace(BLOCK_RE, "").trim(),
+		}))
+		.filter((m) => m.content);
+}
+
+/**
+ * Builds the full director chat-completion message array (Option A): a structured request made of
+ * the system prompt + recent history + the director instruction appended at the very end.
+ */
+function buildDirectorMessages(ctx, mesNum) {
+	const messages = [];
+	const system = buildDirectorSystemPrompt(ctx);
+	if (system) messages.push({ role: "system", content: system });
+	messages.push(...buildHistory(mesNum));
+	// The director instruction is always appended to the end of the RP text.
+	messages.push({ role: "user", content: String(extensionSettings.directorPrompt || "").trim() });
+	return messages;
+}
+
+/** Sends the director request via the configured profile + completion preset. */
+async function sendDirectorRequest(ctx, messages) {
+	const profileId = getProfileIdByName(ctx, extensionSettings.selectedProfile);
+	if (!profileId) throw new Error(`Director connection profile not found: ${extensionSettings.selectedProfile}`);
+	if (!ctx.ConnectionManagerRequestService) throw new Error("ConnectionManagerRequestService not available");
+
+	// "current" => use the profile's own preset. Any other value => temporarily point the profile at
+	// the chosen preset for this one request (core derives presetName from profile.preset).
+	const usePreset = extensionSettings.selectedCompletionPreset && extensionSettings.selectedCompletionPreset !== "current";
+	let overriddenProfile = null;
+	let originalPreset;
+	try {
+		const profile = ctx.ConnectionManagerRequestService.getProfile(profileId);
+		if (usePreset) {
+			overriddenProfile = profile;
+			originalPreset = profile.preset;
+			profile.preset = extensionSettings.selectedCompletionPreset;
+		}
+
+		const effectivePresetName = usePreset ? extensionSettings.selectedCompletionPreset : profile.preset;
+		let maxTokens = extensionSettings.responseLength > 0
+			? extensionSettings.responseLength
+			: resolvePresetMaxTokens(ctx, profile, effectivePresetName);
+		if (!maxTokens) maxTokens = 1024;
+
+		debug("Director request", { profileId, maxTokens, preset: effectivePresetName, messages });
+		const response = await ctx.ConnectionManagerRequestService.sendRequest(
+			profileId,
+			messages,
+			maxTokens,
+			{ extractData: true, includePreset: true }
+		);
+		return response?.content ?? "";
+	} finally {
+		if (overriddenProfile) overriddenProfile.preset = originalPreset;
+	}
+}
+
+/**
+ * Generates the director outline using the configured director model.
+ * @param {number} mesNum - The message index providing the context window.
+ * @returns {Promise<string>} The outline text (may be empty).
+ */
+export async function generateDirectorOutline(mesNum) {
+	const ctx = getContext();
+	const messages = buildDirectorMessages(ctx, mesNum);
+	const outline = await sendDirectorRequest(ctx, messages);
+	return String(outline || "").trim();
+}

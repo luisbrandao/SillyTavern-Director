@@ -1,0 +1,52 @@
+<div id="director_settings" class="director-settings">
+	<div class="inline-drawer">
+		<div class="inline-drawer-toggle inline-drawer-header">
+			<b>Director</b>
+			<div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+		</div>
+		<div class="inline-drawer-content">
+			<label class="checkbox_label" for="director_enabled">
+				<input type="checkbox" id="director_enabled" />
+				<span>Director enabled</span>
+			</label>
+
+			<label for="director_prompt">Director prompt</label>
+			<small>Appended to the end of the roleplay prompt for the director pass.</small>
+			<textarea id="director_prompt" class="text_pole" rows="4"></textarea>
+
+			<label for="director_connection_profile">Connection profile (director model)</label>
+			<small>Run the director pass on a different model than the main reply.</small>
+			<select id="director_connection_profile" class="text_pole"></select>
+
+			<label for="director_completion_preset">Completion preset</label>
+			<select id="director_completion_preset" class="text_pole"></select>
+
+			<div class="flex-container flexGap10">
+				<div class="flex1">
+					<label for="director_response_length">Response length</label>
+					<small>0 = use the preset's value</small>
+					<input type="number" id="director_response_length" class="text_pole" min="0" />
+				</div>
+				<div class="flex1">
+					<label for="director_number_of_messages">Recent messages as context</label>
+					<input type="number" id="director_number_of_messages" class="text_pole" min="1" />
+				</div>
+			</div>
+
+			<div class="flex-container flexGap10">
+				<div class="flex1">
+					<label for="director_injection_depth">Injection depth</label>
+					<input type="number" id="director_injection_depth" class="text_pole" min="0" />
+				</div>
+				<div class="flex1">
+					<label for="director_injection_role">Injection role</label>
+					<select id="director_injection_role" class="text_pole">
+						<option value="system">System</option>
+						<option value="user">User</option>
+						<option value="assistant">Assistant</option>
+					</select>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
