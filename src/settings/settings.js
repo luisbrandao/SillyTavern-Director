@@ -48,6 +48,7 @@ async function loadSettingsUI() {
 function setInitialValues() {
 	$("#director_enabled").prop("checked", !!extensionSettings.enabled);
 	$("#director_prompt").val(extensionSettings.directorPrompt ?? "");
+	$("#director_prompt_role").val(extensionSettings.directorRole ?? "assistant");
 	$("#director_response_length").val(extensionSettings.responseLength ?? 0);
 	$("#director_injection_depth").val(extensionSettings.injectionDepth ?? 0);
 	$("#director_injection_role").val(extensionSettings.injectionRole ?? "system");
@@ -99,6 +100,10 @@ function registerListeners() {
 	});
 	$("#director_prompt").on("input", function () {
 		extensionSettings.directorPrompt = String($(this).val());
+		saveSettingsDebounced();
+	});
+	$("#director_prompt_role").on("change", function () {
+		extensionSettings.directorRole = String($(this).val());
 		saveSettingsDebounced();
 	});
 	$("#director_connection_profile").on("change", function () {

@@ -14,6 +14,14 @@
 			<small>Appended to the end of the roleplay prompt for the director pass.</small>
 			<textarea id="director_prompt" class="text_pole" rows="4"></textarea>
 
+			<label for="director_prompt_role">Director prompt role</label>
+			<small>Role of the director instruction in its own request. Keep it off "user" (default: Assistant) so it isn't merged into your last message.</small>
+			<select id="director_prompt_role" class="text_pole">
+				<option value="assistant">Assistant</option>
+				<option value="system">System</option>
+				<option value="user">User</option>
+			</select>
+
 			<label for="director_connection_profile">Connection profile (director model)</label>
 			<small>Run the director pass on a different model than the main reply.</small>
 			<select id="director_connection_profile" class="text_pole"></select>

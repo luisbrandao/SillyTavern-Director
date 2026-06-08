@@ -21,6 +21,10 @@ export const defaultSettings = {
 
 	// The director instruction. Always appended to the end of the RP prompt for the director pass.
 	directorPrompt: directorPrompt,
+	// Role of the director instruction message in the director's OWN request. Keep it different from
+	// "user" (default: assistant) so chat-completion post-processing doesn't merge it into the last
+	// user message.
+	directorRole: injectionRoles.ASSISTANT,
 
 	// Independent connection used for the DIRECTOR pass, so it can run on a different model than the
 	// main reply. "current" means: use SillyTavern's active connection profile.

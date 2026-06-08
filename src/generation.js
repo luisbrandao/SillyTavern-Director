@@ -72,16 +72,48 @@ function buildHistory(mesNum) {
 }
 
 /**
- * Builds the full director chat-completion message array (Option A): a structured request made of
- * the system prompt + recent history + the director instruction appended at the very end.
+ * Scans the recent chat for active World Info / lorebook entries (dry run, emits no events) so the
+ * director sees the same lore the roleplay does. Returns "" if unavailable.
  */
-function buildDirectorMessages(ctx, mesNum) {
+async function getActiveWorldInfo(ctx, mesNum) {
+	try {
+		if (typeof ctx.getWorldInfoPrompt !== "function") return "";
+		const n = Math.max(1, extensionSettings.numberOfMessages || 10);
+		const messages = chat
+			.filter((c, index) => !c.is_system && index <= mesNum)
+			.slice(-n)
+			.map((c) => `${c.name}: ${String(c.mes || "").replace(BLOCK_RE, "").trim()}`);
+		if (messages.length === 0) return "";
+		const chatForWI = messages.slice().reverse(); // getWorldInfoPrompt expects most-recent-first
+		const maxContext = Number(ctx.maxContext) || 8192;
+		const { worldInfoString } = await ctx.getWorldInfoPrompt(chatForWI, maxContext, true);
+		return String(worldInfoString || "").trim();
+	} catch (e) {
+		warn("Failed to gather world info for director:", e?.message);
+		return "";
+	}
+}
+
+/**
+ * Builds the full director chat-completion message array (Option A): system prompt (character +
+ * active World Info) + recent history + the director instruction appended as its own message.
+ * The instruction uses `directorRole` (default "assistant") so it is NOT merged into the last
+ * user message by chat-completion post-processing.
+ */
+async function buildDirectorMessages(ctx, mesNum) {
 	const messages = [];
-	const system = buildDirectorSystemPrompt(ctx);
-	if (system) messages.push({ role: "system", content: system });
+
+	const systemParts = [];
+	const charSystem = buildDirectorSystemPrompt(ctx);
+	if (charSystem) systemParts.push(charSystem);
+	const worldInfo = await getActiveWorldInfo(ctx, mesNum);
+	if (worldInfo) systemParts.push(`### World Info\n${worldInfo}`);
+	if (systemParts.length) messages.push({ role: "system", content: systemParts.join("\n\n") });
+
 	messages.push(...buildHistory(mesNum));
-	// The director instruction is always appended to the end of the RP text.
-	messages.push({ role: "user", content: String(extensionSettings.directorPrompt || "").trim() });
+
+	const directorRole = extensionSettings.directorRole || "assistant";
+	messages.push({ role: directorRole, content: String(extensionSettings.directorPrompt || "").trim() });
 	return messages;
 }
 
@@ -130,7 +162,7 @@ async function sendDirectorRequest(ctx, messages) {
  */
 export async function generateDirectorOutline(mesNum) {
 	const ctx = getContext();
-	const messages = buildDirectorMessages(ctx, mesNum);
+	const messages = await buildDirectorMessages(ctx, mesNum);
 	const outline = await sendDirectorRequest(ctx, messages);
 	return String(outline || "").trim();
 }
