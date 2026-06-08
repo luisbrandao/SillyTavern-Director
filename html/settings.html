@@ -14,6 +14,10 @@
 			<small>Appended to the end of the roleplay prompt for the director pass.</small>
 			<textarea id="director_prompt" class="text_pole" rows="4"></textarea>
 
+			<label for="director_character_override">Character context override</label>
+			<small>Replaces the character card in the director's "### Persona description". Leave empty to use the active card. Useful when a card crams example dialogues / keyword lists into its description.</small>
+			<textarea id="director_character_override" class="text_pole" rows="4" placeholder="(empty = use the character card)"></textarea>
+
 			<label for="director_prompt_role">Director prompt role</label>
 			<small>Role of the director instruction in its own request. Keep it off "user" (default: Assistant) so it isn't merged into your last message.</small>
 			<select id="director_prompt_role" class="text_pole">

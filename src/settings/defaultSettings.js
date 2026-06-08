@@ -25,6 +25,10 @@ export const defaultSettings = {
 	// "user" (default: assistant) so chat-completion post-processing doesn't merge it into the last
 	// user message.
 	directorRole: injectionRoles.ASSISTANT,
+	// Optional clean character context for the director. When non-empty it REPLACES the character
+	// card in the director's "### Persona description" section (useful for messy/monolithic cards).
+	// Leave empty to use the active character card.
+	characterContextOverride: "",
 
 	// Independent connection used for the DIRECTOR pass, so it can run on a different model than the
 	// main reply. "current" means: use SillyTavern's active connection profile.

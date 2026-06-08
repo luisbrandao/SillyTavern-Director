@@ -55,15 +55,21 @@ function buildDirectorSystemPrompt(ctx) {
 
 	const sections = [];
 	try {
-		// Character card -> "### Persona description".
-		const char = ctx.characters && ctx.characterId != null ? ctx.characters[ctx.characterId] : null;
-		if (char) {
-			const card = sub([char.description, char.personality, char.scenario]
-				.map((p) => String(p ?? "").trim())
-				.filter(Boolean)
-				.join("\n")).trim();
-			if (card) sections.push(`### Persona description\n${card}`);
+		// "### Persona description": a user-provided override if set, else the character card.
+		const override = String(extensionSettings.characterContextOverride ?? "").trim();
+		let card = "";
+		if (override) {
+			card = sub(override).trim();
+		} else {
+			const char = ctx.characters && ctx.characterId != null ? ctx.characters[ctx.characterId] : null;
+			if (char) {
+				card = sub([char.description, char.personality, char.scenario]
+					.map((p) => String(p ?? "").trim())
+					.filter(Boolean)
+					.join("\n")).trim();
+			}
 		}
+		if (card) sections.push(`### Persona description\n${card}`);
 
 		// User persona -> "### Player character: <name>".
 		const fields = ctx.getCharacterCardFields?.();
