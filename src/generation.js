@@ -37,22 +37,46 @@ function resolvePresetMaxTokens(ctx, profile, presetName) {
 	}
 }
 
-/** Builds the director system prompt from the character card + user persona. */
+/**
+ * Builds the director system prompt as labeled sections: the character card under
+ * "### Persona description" and the player's persona under "### Player character: <name>".
+ * (World Info is appended as its own section in buildDirectorMessages.) Macros like {{user}} /
+ * {{char}} are resolved via substituteParams; stray carriage returns are stripped.
+ */
 function buildDirectorSystemPrompt(ctx) {
-	const parts = [];
+	const sub = (value) => {
+		const s = String(value ?? "").replace(/\r/g, "");
+		try {
+			return typeof ctx.substituteParams === "function" ? String(ctx.substituteParams(s)) : s;
+		} catch (e) {
+			return s;
+		}
+	};
+
+	const sections = [];
 	try {
+		// Character card -> "### Persona description".
 		const char = ctx.characters && ctx.characterId != null ? ctx.characters[ctx.characterId] : null;
 		if (char) {
-			if (char.description) parts.push(String(char.description).trim());
-			if (char.personality) parts.push(`Personality: ${String(char.personality).trim()}`);
-			if (char.scenario) parts.push(`Scenario: ${String(char.scenario).trim()}`);
+			const card = sub([char.description, char.personality, char.scenario]
+				.map((p) => String(p ?? "").trim())
+				.filter(Boolean)
+				.join("\n")).trim();
+			if (card) sections.push(`### Persona description\n${card}`);
 		}
+
+		// User persona -> "### Player character: <name>".
 		const fields = ctx.getCharacterCardFields?.();
-		if (fields?.persona) parts.push(`User persona: ${String(fields.persona).trim()}`);
+		const persona = sub(fields?.persona ?? "").trim();
+		if (persona) {
+			const userName = sub("{{user}}").trim() || "User";
+			sections.push(`### Player character: ${userName}\n${persona}`);
+		}
 	} catch (e) {
 		warn("Failed to build director system prompt:", e?.message);
 	}
-	return parts.filter(Boolean).join("\n\n").trim();
+
+	return sections.join("\n\n").trim();
 }
 
 // Strip tracker/director blocks out of message text before feeding history to the director.
