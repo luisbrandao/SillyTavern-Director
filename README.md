@@ -102,8 +102,9 @@ exists, a collapsible **🎬 Director** preview block beneath it.
 - **Director runs only for bot replies.** It fires before the reply, injects, and attaches the outline
   to the bot message — never to your message. On swipe/regenerate it reuses (or regenerates) that
   message's outline.
-- **Streaming.** The director request is streamed. (Non-streamed responses from some remote backends
-  arrive compressed and SillyTavern's backend doesn't always decode them — streaming avoids that.)
+- **Non-streaming.** The director request is sent non-streamed — the outline isn't shown live, so
+  there's nothing to stream, and a single response is marginally faster. (If a backend returns a
+  compressed/garbled non-streamed body, that's a backend/proxy decode issue to fix there.)
 - **Token counting** uses SillyTavern's active tokenizer, which may differ slightly from the director
   model's; the safety margin absorbs the drift. Set **Context size** explicitly if the auto value
   looks wrong for your backend.

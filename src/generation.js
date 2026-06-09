@@ -268,7 +268,7 @@ async function buildDirectorMessages(ctx, mesNum, conn, pendingUserText = "") {
 	return messages;
 }
 
-/** Sends the director request via the configured profile + completion preset (streamed). */
+/** Sends the director request via the configured profile + completion preset (non-streaming). */
 async function sendDirectorRequest(ctx, conn, messages) {
 	if (!ctx.ConnectionManagerRequestService) throw new Error("ConnectionManagerRequestService not available");
 
@@ -287,18 +287,19 @@ async function sendDirectorRequest(ctx, conn, messages) {
 		const maxTokens = conn.responseTokens || 1024;
 		debug("Director request", { profileId: conn.profileId, maxTokens, preset: conn.presetName, messageCount: messages.length });
 
-		// Stream the request. Non-streaming responses from remote backends can come back compressed
-		// (e.g. brotli), which SillyTavern's node-fetch backend doesn't always decode -> garbage ->
-		// parse error. Streaming (SSE) responses aren't compressed.
+		// Non-streaming: the outline isn't shown live (the user never sees it stream), and a single
+		// response is marginally faster. With stream:false, sendRequest returns ExtractedData (.content).
+		// (Historically a remote proxy returned a compressed body that ST couldn't decode here; that was
+		// a proxy-side bug, since fixed — not something to work around by forcing streaming.)
 		const response = await ctx.ConnectionManagerRequestService.sendRequest(
 			conn.profileId,
 			messages,
 			maxTokens,
-			{ stream: true, extractData: true, includePreset: true }
+			{ stream: false, extractData: true, includePreset: true }
 		);
 
-		// Streaming returns a generator factory yielding cumulative { text }. Non-streaming (fallback)
-		// returns extracted data with .content.
+		// stream:false -> ExtractedData with .content. Guard the streaming shape too, in case a backend
+		// ignores the flag and hands back a generator factory yielding cumulative { text }.
 		if (typeof response === "function") {
 			let text = "";
 			for await (const chunk of response()) {
