@@ -16,13 +16,43 @@ Goal: direct the scene with a cheap/fast model, write the prose with the main mo
 - **Injection: use the vanilla `setExtensionPrompt(...)` mechanism** (IN_CHAT, depth/role from settings) to append the outline to the main prompt. Do NOT hand-rewrite `chat[mesId].mes` the way Tracker's inline mode does — it's fragile and fights other extensions.
 - **Independent connection:** use `ConnectionManagerRequestService` with the configured profile. To honor a dedicated completion preset, temporarily set `profile.preset` for the one request and restore it in `finally` (the core hardcodes `presetName: profile.preset`). Pull max-tokens from the preset (`openai_max_tokens` / `genamt`) when no explicit Response Length override is set — a hardcoded default silently truncates.
 
-## CRITICAL gotcha (learned from Tracker)
-`activateSendButtons()` → `hideStopButton()` **emits `GENERATION_ENDED`** when it hides a visible stop button. If Director toggles the stop button while a host generation is in flight (which it is, at `GENERATION_AFTER_COMMANDS`), that spurious `GENERATION_ENDED` will flush other extensions' ephemeral injects (e.g. Guided Generations' `/inject ephemeral=true`). **Do not toggle the stop button during the intercept**, or pre-hide it before calling `activateSendButtons()` so the event guard short-circuits.
+## Busy state: hiding the send button (and the CRITICAL gotcha)
+While the director model is thinking, the send button is hidden so the user can't fire a second
+generation on top of it — same UX as the Tracker. **Every** director request goes through
+`generateDirectorOutline()` in `src/generation.js` (new reply, swipe/regenerate/continue, and the
+manual regenerate button), so the busy-state toggle lives there and there alone — don't sprinkle it
+across the callers.
+
+The toggle is guarded and self-restoring:
+```js
+const manageStopButton = $("#mes_stop").css("display") === "none";
+if (manageStopButton) deactivateSendButtons();
+try { /* ...generate... */ } finally { if (manageStopButton) restoreSendButtons(); }
+```
+- **The `=== "none"` guard** means we only touch the buttons when nobody else is showing the stop
+  button. True during the `GENERATION_AFTER_COMMANDS` intercept (core hasn't shown its own stop
+  button yet) and during a manual regenerate (no host generation at all). If the stop button is
+  already visible, some other flow owns it — leave it alone.
+- **The `finally`** guarantees the button comes back even if generation throws.
+
+⚠️ **The gotcha (learned from Tracker, the hard way):** `activateSendButtons()` → `hideStopButton()`
+**emits `GENERATION_ENDED`** whenever it hides a *visible* stop button. Fire that mid-generation and
+it flushes other extensions' ephemeral injects (e.g. Guided Generations' `/inject ephemeral=true`),
+silently wiping their instructions out of the prompt. That's why we never call `activateSendButtons()`
+directly — use the `restoreSendButtons()` helper, which **pre-hides the stop button first** so
+`hideStopButton()`'s visibility check short-circuits and no event fires. If you add a new busy state,
+reuse that helper; never restore buttons by hand.
 
 ## Build, Test & Development
-- No build step yet. Edit JS/HTML directly; if a `sass/` source is added later, treat the SCSS as source of truth and document the `npx sass` command here.
-- Reload via SillyTavern `Settings → Extensions → Reload`. Inspect with debug mode on.
-- **Bump `version` in `manifest.json`** on user-facing changes (semver).
+- **No build step.** Edit JS/HTML directly. If a `sass/` source is ever added, treat the SCSS as the
+  source of truth and document the exact `npx sass ...` command right here.
+- **Reload** via SillyTavern `Settings → Extensions → Reload`. Turn on debug mode and watch the
+  console — the code logs through `debug()` from `lib/utils.js`.
+- **Bump `version` in `manifest.json` on every user-facing change** (semver: patch for fixes, minor
+  for features, major for breaking). This is not optional — it's how users know a reload actually
+  pulled the new code. e.g. the send-button busy state shipped as `0.1.0 → 0.2.0`.
 
 ## Commit & PR Expectations
-- Short imperative commit titles; explain root cause in the body for non-obvious fixes.
+- Short imperative commit titles ("Hide send button while director generates").
+- Explain the **root cause** in the body for non-obvious fixes — future-you won't remember why the
+  stop button gets pre-hidden.

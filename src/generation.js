@@ -1,4 +1,4 @@
-import { chat } from "../../../../../script.js";
+import { chat, deactivateSendButtons, activateSendButtons } from "../../../../../script.js";
 import { getContext } from "../../../../../scripts/extensions.js";
 import { extensionSettings } from "../index.js";
 import { debug, warn } from "../lib/utils.js";
@@ -11,6 +11,23 @@ const CONTEXT_SAFETY_MARGIN = 256;
 const PER_MESSAGE_OVERHEAD = 4;
 // Cap on how many recent messages are scanned for World Info activation (perf guard).
 const WORLD_INFO_SCAN_CAP = 100;
+
+/**
+ * Restores the send/stop buttons after the director's transient "busy" state WITHOUT emitting
+ * GENERATION_ENDED.
+ *
+ * Core's activateSendButtons() calls hideStopButton(), which emits GENERATION_ENDED whenever it
+ * hides a *visible* stop button. The director generates at GENERATION_AFTER_COMMANDS — while a host
+ * generation is still in flight and before core has shown its own stop button — so that spurious
+ * GENERATION_ENDED would fire mid-generation and flush other extensions' ephemeral injects (e.g.
+ * Guided Generations' `/inject ... ephemeral=true`), wiping their instructions out of the prompt.
+ * Pre-hiding the stop button makes hideStopButton()'s visibility guard a no-op, so activateSendButtons()
+ * still runs its remaining UI cleanup but emits no event. (See AGENTS.md "CRITICAL gotcha".)
+ */
+function restoreSendButtons() {
+	$("#mes_stop").css("display", "none");
+	activateSendButtons();
+}
 
 /**
  * Resolves a connection profile id by name. "current" => the active profile.
@@ -296,9 +313,20 @@ async function sendDirectorRequest(ctx, conn, messages) {
  * @returns {Promise<string>} The outline text (may be empty).
  */
 export async function generateDirectorOutline(mesNum, pendingUserText = "") {
-	const ctx = getContext();
-	const conn = resolveDirectorConnection(ctx);
-	const messages = await buildDirectorMessages(ctx, mesNum, conn, pendingUserText);
-	const outline = await sendDirectorRequest(ctx, conn, messages);
-	return String(outline || "").trim();
+	// Hide the send button so the user can't fire a second generation while the director is working.
+	// Only manage the buttons if no one else is currently showing the stop button (stop hidden ===
+	// true): during the GENERATION_AFTER_COMMANDS intercept the host generation hasn't shown its own
+	// stop button yet, while a manual regenerate has none at all — both cases are ours to manage. If
+	// the stop button is already visible (some other flow owns it), leave it untouched.
+	const manageStopButton = $("#mes_stop").css("display") === "none";
+	if (manageStopButton) deactivateSendButtons();
+	try {
+		const ctx = getContext();
+		const conn = resolveDirectorConnection(ctx);
+		const messages = await buildDirectorMessages(ctx, mesNum, conn, pendingUserText);
+		const outline = await sendDirectorRequest(ctx, conn, messages);
+		return String(outline || "").trim();
+	} finally {
+		if (manageStopButton) restoreSendButtons();
+	}
 }
