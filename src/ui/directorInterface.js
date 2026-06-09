@@ -1,21 +1,11 @@
 import { chat } from "../../../../../../script.js";
-import { callGenericPopup, POPUP_TYPE } from "../../../../../../scripts/popup.js";
+import { Popup, callGenericPopup, POPUP_TYPE } from "../../../../../../scripts/popup.js";
 import { saveDirectorToMessage, regenerateDirectorForMessage, removeDirectorFromMessage } from "../director.js";
-
-function escapeHtml(value) {
-	return String(value ?? "")
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;");
-}
-
-// Custom popup button results (2+ to avoid colliding with POPUP_RESULT affirmative/negative/cancel).
-const ACTION = { EDIT: 2, REGENERATE: 3, DELETE: 4 };
 
 /**
  * Per-message "Show Director" entry point: a message button (like the Tracker's "Show Message
- * Tracker") that opens a popup with the message's director outline and Edit/Regenerate/Delete.
- * The action helpers are shared with the inline preview controls.
+ * Tracker") that opens a single editable window for the message's director outline — edit + Save,
+ * Regenerate (refills the box in place), or Delete. Shared with the inline preview controls.
  */
 export class DirectorInterface {
 	/** Adds the per-message button to the message template and binds the (delegated) click. */
@@ -35,56 +25,67 @@ export class DirectorInterface {
 			});
 	}
 
-	/** Opens the director popup for a message. Re-opens itself after edit/regenerate. */
+	/**
+	 * Opens a single editable window for the message's outline: edit + Save, Regenerate (refills the
+	 * textarea in place — no second window), or Delete.
+	 * @param {number} mesId
+	 */
 	static async show(mesId) {
 		if (!chat[mesId]) {
 			window.toastr?.info?.("No message selected.");
 			return;
 		}
 
-		const outline = String(chat[mesId]?.director ?? "");
-		const hasOutline = !!outline.trim();
-		const body = hasOutline
-			? `<div class="director_popup_outline">${escapeHtml(outline)}</div>`
-			: `<div class="director_popup_empty"><em>No director outline for this message yet.</em></div>`;
-		const content = `<h3>🎬 Director — message ${mesId}</h3>${body}`;
+		const current = String(chat[mesId]?.director ?? "");
+		const header = `<h3>🎬 Director — message ${mesId}</h3><small>Edit the outline and press Save, or regenerate it.</small>`;
 
-		const result = await callGenericPopup(content, POPUP_TYPE.TEXT, "", {
+		const popup = new Popup(header, POPUP_TYPE.INPUT, current, {
 			wide: true,
-			allowVerticalScrolling: true,
-			okButton: false,
+			rows: 14,
+			okButton: "Save",
 			cancelButton: "Close",
 			customButtons: [
-				{ text: hasOutline ? "Edit" : "Add", icon: "fa-pen", result: ACTION.EDIT },
-				{ text: "Regenerate", icon: "fa-rotate", result: ACTION.REGENERATE },
-				{ text: "Delete", icon: "fa-trash", result: ACTION.DELETE },
+				{
+					// No `result` => this button does NOT close the popup; it just refills the textarea.
+					text: "Regenerate",
+					icon: "fa-rotate",
+					action: async () => {
+						try {
+							window.toastr?.info?.("Director: regenerating…");
+							const outline = await regenerateDirectorForMessage(mesId);
+							if (popup.mainInput) popup.mainInput.value = String(outline ?? "");
+						} catch (e) {
+							window.toastr?.error?.("Director regeneration failed.");
+							console.error("[director] regenerate failed:", e);
+						}
+					},
+				},
+				{
+					text: "Delete",
+					icon: "fa-trash",
+					action: async () => {
+						const confirmed = await callGenericPopup("Remove the director outline from this message?", POPUP_TYPE.CONFIRM);
+						if (!confirmed) return;
+						await removeDirectorFromMessage(mesId);
+						await popup.completeCancelled();
+					},
+				},
 			],
 		});
 
-		if (result === ACTION.EDIT) {
-			await DirectorInterface.edit(mesId);
-			return DirectorInterface.show(mesId);
+		const result = await popup.show();
+		// INPUT popups return the textarea string on Save; false/null on Close/Delete.
+		if (typeof result === "string") {
+			await saveDirectorToMessage(mesId, result);
 		}
-		if (result === ACTION.REGENERATE) {
-			await DirectorInterface.regenerate(mesId);
-			return DirectorInterface.show(mesId);
-		}
-		if (result === ACTION.DELETE) {
-			await DirectorInterface.remove(mesId);
-		}
-		// Close / cancel: do nothing.
 	}
 
-	/** Edit popup (also used by the inline edit control). */
+	/** Inline "edit" control -> the same editable window. */
 	static async edit(mesId) {
-		if (!chat[mesId]) return;
-		const current = String(chat[mesId]?.director ?? "");
-		const result = await callGenericPopup("Edit director outline", POPUP_TYPE.INPUT, current, { rows: 10, wide: true });
-		if (result === null || result === false) return;
-		await saveDirectorToMessage(mesId, String(result));
+		return DirectorInterface.show(mesId);
 	}
 
-	/** Regenerate the outline for a message (shared with the inline regenerate control). */
+	/** Regenerate the outline for a message (inline regenerate control). */
 	static async regenerate(mesId) {
 		if (!chat[mesId]) return;
 		try {
@@ -96,7 +97,7 @@ export class DirectorInterface {
 		}
 	}
 
-	/** Delete the outline (with confirmation; shared with the inline delete control). */
+	/** Delete the outline with confirmation (inline delete control). */
 	static async remove(mesId) {
 		if (!chat[mesId]) return;
 		const confirmed = await callGenericPopup("Remove the director outline from this message?", POPUP_TYPE.CONFIRM);
