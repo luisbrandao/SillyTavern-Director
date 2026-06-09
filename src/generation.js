@@ -38,12 +38,13 @@ function resolvePresetMaxTokens(ctx, profile, presetName) {
 }
 
 /**
- * Builds the director system prompt as labeled sections: the character card under
- * "### Persona description" and the player's persona under "### Player character: <name>".
- * (World Info is appended as its own section in buildDirectorMessages.) Macros like {{user}} /
- * {{char}} are resolved via substituteParams; stray carriage returns are stripped.
+ * Builds the director system prompt as three labeled sections, always in this order:
+ *   ### Persona description    (character context override, else the character card)
+ *   ### Player character: <name>   (always shown; persona description if present)
+ *   ### World Info             (active lorebook entries, if any)
+ * Macros like {{user}} / {{char}} are resolved via substituteParams; stray carriage returns stripped.
  */
-function buildDirectorSystemPrompt(ctx) {
+async function buildDirectorSystemPrompt(ctx, mesNum) {
 	const sub = (value) => {
 		const s = String(value ?? "").replace(/\r/g, "");
 		try {
@@ -71,15 +72,21 @@ function buildDirectorSystemPrompt(ctx) {
 		}
 		if (card) sections.push(`### Persona description\n${card}`);
 
-		// User persona -> "### Player character: <name>".
+		// "### Player character: <name>" -> always shown; include the persona description if present.
+		const userName = sub("{{user}}").trim() || "User";
 		const fields = ctx.getCharacterCardFields?.();
 		const persona = sub(fields?.persona ?? "").trim();
-		if (persona) {
-			const userName = sub("{{user}}").trim() || "User";
-			sections.push(`### Player character: ${userName}\n${persona}`);
-		}
+		sections.push(`### Player character: ${userName}${persona ? `\n${persona}` : ""}`);
 	} catch (e) {
 		warn("Failed to build director system prompt:", e?.message);
+	}
+
+	// "### World Info" -> active lorebook entries (kept here so the section order is guaranteed).
+	try {
+		const worldInfo = await getActiveWorldInfo(ctx, mesNum);
+		if (worldInfo) sections.push(`### World Info\n${worldInfo}`);
+	} catch (e) {
+		warn("Failed to add world info:", e?.message);
 	}
 
 	return sections.join("\n\n").trim();
@@ -133,12 +140,8 @@ async function getActiveWorldInfo(ctx, mesNum) {
 async function buildDirectorMessages(ctx, mesNum) {
 	const messages = [];
 
-	const systemParts = [];
-	const charSystem = buildDirectorSystemPrompt(ctx);
-	if (charSystem) systemParts.push(charSystem);
-	const worldInfo = await getActiveWorldInfo(ctx, mesNum);
-	if (worldInfo) systemParts.push(`### World Info\n${worldInfo}`);
-	if (systemParts.length) messages.push({ role: "system", content: systemParts.join("\n\n") });
+	const system = await buildDirectorSystemPrompt(ctx, mesNum);
+	if (system) messages.push({ role: "system", content: system });
 
 	messages.push(...buildHistory(mesNum));
 
