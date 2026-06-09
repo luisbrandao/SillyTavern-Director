@@ -81,6 +81,22 @@ function resolveDirectorConnection(ctx) {
 		? sizeOverride
 		: (resolvePresetMaxContext(ctx, profile, presetName) || Number(ctx.maxContext) || 8192);
 
+	debug("Director connection resolved", {
+		selectedProfile: extensionSettings.selectedProfile,
+		selectedCompletionPreset: extensionSettings.selectedCompletionPreset,
+		resolvedProfileId: profileId,
+		profileName: profile?.name,
+		profileApi: profile?.api,
+		profileMode: profile?.mode,
+		profileDefaultPreset: profile?.preset,
+		usePreset,
+		presetNameUsed: presetName,
+		responseLengthSetting: extensionSettings.responseLength,
+		responseTokens,
+		contextSizeOverride: sizeOverride,
+		contextSize,
+	});
+
 	return { profileId, profile, presetName, usePreset, responseTokens, contextSize };
 }
 
