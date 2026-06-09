@@ -216,7 +216,11 @@ async function getActiveWorldInfo(ctx, mesNum, contextSize) {
 async function buildDirectorMessages(ctx, mesNum, conn, pendingUserText = "") {
 	const system = await buildDirectorSystemPrompt(ctx, mesNum, conn.contextSize);
 	const directorRole = extensionSettings.directorRole || "assistant";
-	const instruction = { role: directorRole, content: String(extensionSettings.directorPrompt || "").trim() };
+	// Resolve {{user}} / {{char}} (etc.) in the director instruction — it's sent to the director model
+	// directly, so SillyTavern won't substitute it for us.
+	const rawPrompt = String(extensionSettings.directorPrompt || "").trim();
+	const promptContent = typeof ctx.substituteParams === "function" ? String(ctx.substituteParams(rawPrompt)) : rawPrompt;
+	const instruction = { role: directorRole, content: promptContent };
 	// The user's just-sent message isn't in the chat yet at GENERATION_AFTER_COMMANDS time; it's
 	// passed in so the director directs based on it. Added as the final user turn before the instruction.
 	const pending = String(pendingUserText || "").trim();
