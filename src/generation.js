@@ -196,15 +196,19 @@ async function getActiveWorldInfo(ctx, mesNum, contextSize) {
  * The instruction uses `directorRole` (default "assistant") so chat-completion post-processing
  * doesn't merge it into the last user message.
  */
-async function buildDirectorMessages(ctx, mesNum, conn) {
+async function buildDirectorMessages(ctx, mesNum, conn, pendingUserText = "") {
 	const system = await buildDirectorSystemPrompt(ctx, mesNum, conn.contextSize);
 	const directorRole = extensionSettings.directorRole || "assistant";
 	const instruction = { role: directorRole, content: String(extensionSettings.directorPrompt || "").trim() };
+	// The user's just-sent message isn't in the chat yet at GENERATION_AFTER_COMMANDS time; it's
+	// passed in so the director directs based on it. Added as the final user turn before the instruction.
+	const pending = String(pendingUserText || "").trim();
 
 	const budget = Math.max(0, conn.contextSize - conn.responseTokens - CONTEXT_SAFETY_MARGIN);
 	let used = 0;
 	if (system) used += await countTokens(ctx, system);
 	used += (await countTokens(ctx, instruction.content)) + PER_MESSAGE_OVERHEAD;
+	if (pending) used += (await countTokens(ctx, pending)) + PER_MESSAGE_OVERHEAD;
 
 	const history = chat
 		.filter((c, index) => !c.is_system && index <= mesNum)
@@ -231,11 +235,13 @@ async function buildDirectorMessages(ctx, mesNum, conn) {
 		usedTokens: used,
 		includedMessages: included.length,
 		totalMessages: history.length,
+		hasPendingUserMessage: !!pending,
 	});
 
 	const messages = [];
 	if (system) messages.push({ role: "system", content: system });
 	messages.push(...included);
+	if (pending) messages.push({ role: "user", content: pending });
 	messages.push(instruction);
 	return messages;
 }
@@ -289,10 +295,10 @@ async function sendDirectorRequest(ctx, conn, messages) {
  * @param {number} mesNum - The message index providing the context window.
  * @returns {Promise<string>} The outline text (may be empty).
  */
-export async function generateDirectorOutline(mesNum) {
+export async function generateDirectorOutline(mesNum, pendingUserText = "") {
 	const ctx = getContext();
 	const conn = resolveDirectorConnection(ctx);
-	const messages = await buildDirectorMessages(ctx, mesNum, conn);
+	const messages = await buildDirectorMessages(ctx, mesNum, conn, pendingUserText);
 	const outline = await sendDirectorRequest(ctx, conn, messages);
 	return String(outline || "").trim();
 }

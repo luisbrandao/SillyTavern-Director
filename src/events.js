@@ -1,6 +1,6 @@
 import { chat } from "../../../../../script.js";
 import { isEnabled } from "./settings/settings.js";
-import { prepareDirector, addDirectorToMessage, clearInjects } from "./director.js";
+import { prepareDirector, attachPendingOutline, clearInjects } from "./director.js";
 import { DirectorPreviewManager } from "./ui/directorPreviewManager.js";
 import { debug } from "../lib/utils.js";
 
@@ -28,7 +28,7 @@ async function onGenerateAfterCommands(type, options, dryRun) {
 
 	const normalizedType = type === "normal" ? undefined : type;
 	try {
-		await prepareDirector(normalizedType);
+		await prepareDirector(normalizedType, options);
 	} catch (e) {
 		console.error("[director] prepareDirector failed:", e);
 		toastr?.error?.("Director generation failed. Check the director connection profile.");
@@ -37,13 +37,14 @@ async function onGenerateAfterCommands(type, options, dryRun) {
 
 async function onCharacterMessageRendered(mesId) {
 	if (!isEnabled()) return;
-	await addDirectorToMessage(mesId);
+	// The director outline is for the bot reply — attach it here only.
+	await attachPendingOutline(mesId);
 	DirectorPreviewManager.updatePreview(mesId);
 }
 
 async function onUserMessageRendered(mesId) {
 	if (!isEnabled()) return;
-	await addDirectorToMessage(mesId);
+	// Never attach an outline to a user message; just refresh its preview (a no-op unless one exists).
 	DirectorPreviewManager.updatePreview(mesId);
 }
 

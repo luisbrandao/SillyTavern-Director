@@ -38,58 +38,77 @@ export async function clearInjects() {
 }
 
 /**
- * Orchestrates the director pass for an upcoming reply: generate the outline (or reuse the existing
- * one on a swipe/regenerate), stash it for the message about to be rendered, and inject it so the
- * main model sees it. Mirrors the Tracker's temp-then-persist pattern. No stop-button toggling.
- * @param {string|undefined} type - Generation type (undefined/"normal", "swipe", "regenerate", ...).
+ * Reads the user's pending message — still sitting in the textarea at GENERATION_AFTER_COMMANDS
+ * time, because SillyTavern only adds it to the chat afterwards. Read-only (we never clear it).
  */
-export async function prepareDirector(type) {
+function readPendingUserMessage(options) {
+	if (options?.automatic_trigger) return "";
+	try {
+		const ta = document.getElementById("send_textarea");
+		return ta ? String(ta.value || "").trim() : "";
+	} catch (e) {
+		return "";
+	}
+}
+
+/**
+ * Orchestrates the director pass for an upcoming BOT reply: generate the outline first, then inject
+ * only the latest outline into the main request. The outline is attached to the bot message (never
+ * the user message). Runs at GENERATION_AFTER_COMMANDS, which fires BEFORE SillyTavern adds the
+ * user's message, so for a new reply we read that message from the textarea for context.
+ * @param {string|undefined} type - Generation type (undefined/"normal", "swipe", "regenerate", ...).
+ * @param {object} [options] - Generation options from the event (e.g. automatic_trigger).
+ */
+export async function prepareDirector(type, options) {
 	if (!chat_metadata.director) chat_metadata.director = {};
 
-	const lastId = getLastNonSystemMessageIndex();
-	if (lastId === -1) {
-		await injectDirector("");
+	// Swipe / regenerate / continue: re-doing an EXISTING bot reply. Reuse its outline, or generate
+	// from the prior context, and attach to that same (already-present) message.
+	if ([ACTION_TYPES.SWIPE, ACTION_TYPES.REGENERATE, ACTION_TYPES.CONTINUE].includes(type)) {
+		const lastId = getLastNonSystemMessageIndex();
+		if (lastId === -1) {
+			await injectDirector("");
+			return;
+		}
+		let outline = chat[lastId]?.director || null;
+		if (!outline) {
+			const prevId = getPreviousNonSystemMessageIndex(lastId);
+			outline = await generateDirectorOutline(prevId !== -1 ? prevId : lastId, "");
+			if (outline) {
+				chat[lastId].director = outline;
+				await saveChatConditional();
+				DirectorPreviewManager.updatePreview(lastId);
+			}
+		}
+		debug("Director (repeat)", { type, lastId, hasOutline: !!outline });
+		await injectDirector(outline || "");
 		return;
 	}
 
-	let outline = null;
-	let targetId = null;
+	// New reply. The user message isn't in the chat yet, so read it from the textarea for context.
+	// The outline is held pending and attached to the next BOT message that renders.
+	const pendingUserText = readPendingUserMessage(options);
+	const lastId = getLastNonSystemMessageIndex();
+	const outline = await generateDirectorOutline(lastId, pendingUserText);
 
-	if ([ACTION_TYPES.SWIPE, ACTION_TYPES.REGENERATE, ACTION_TYPES.CONTINUE].includes(type)) {
-		// Re-doing the last reply: reuse its stored outline; generate one only if missing.
-		targetId = lastId;
-		outline = chat[targetId]?.director || null;
-		if (!outline) {
-			const prevId = getPreviousNonSystemMessageIndex(targetId);
-			if (prevId !== -1) outline = await generateDirectorOutline(prevId);
-		}
-	} else {
-		// New reply: direct the upcoming turn from the just-sent message.
-		targetId = lastId + 1;
-		outline = await generateDirectorOutline(lastId);
-	}
+	chat_metadata.director.pendingOutline = outline || "";
+	await saveChatConditional();
 
-	if (outline) {
-		chat_metadata.director.tempOutline = outline;
-		chat_metadata.director.tempOutlineId = targetId;
-		await saveChatConditional();
-	}
-
-	debug("Director outline prepared", { type, targetId, hasOutline: !!outline });
+	debug("Director (new reply)", { lastId, hasPendingUserText: !!pendingUserText, hasOutline: !!outline });
 	await injectDirector(outline || "");
 }
 
 /**
- * Persists the pending temp outline onto a message once it has rendered (called from render events).
+ * Attaches the pending outline to a freshly rendered BOT message. Called from
+ * CHARACTER_MESSAGE_RENDERED only — never attaches to a user message.
  * @param {number} mesId
  */
-export async function addDirectorToMessage(mesId) {
+export async function attachPendingOutline(mesId) {
 	const meta = chat_metadata.director;
-	if (!meta || meta.tempOutlineId !== mesId || !meta.tempOutline) return;
-
-	chat[mesId].director = meta.tempOutline;
-	meta.tempOutlineId = null;
-	meta.tempOutline = null;
+	if (!meta || !meta.pendingOutline) return;
+	if (!chat[mesId] || chat[mesId].is_user) return; // bot messages only
+	chat[mesId].director = meta.pendingOutline;
+	meta.pendingOutline = null;
 	await saveChatConditional();
 	DirectorPreviewManager.updatePreview(mesId);
 }
