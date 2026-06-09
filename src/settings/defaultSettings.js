@@ -47,8 +47,11 @@ export const defaultSettings = {
 	// the generated outline. Edit this to change the tag/format or add guiding instructions.
 	injectionTemplate: "<director>\n{{outline}}\n</director>",
 
-	// Number of recent chat messages to feed the director pass as context.
-	numberOfMessages: 10,
+	// Context budget (tokens) for composing the director prompt. The director fits as many recent
+	// messages as possible within this budget (minus the reserved response), like a normal ST prompt.
+	// 0 = auto: use the director profile/preset's own context size (falling back to the app's current
+	// max context).
+	contextSize: 0,
 
 	debugMode: false,
 };

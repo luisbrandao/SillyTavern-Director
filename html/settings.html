@@ -55,8 +55,9 @@
 					<input type="number" id="director_response_length" class="text_pole" min="0" />
 				</div>
 				<div class="flex1">
-					<label for="director_number_of_messages">Recent messages as context</label>
-					<input type="number" id="director_number_of_messages" class="text_pole" min="1" />
+					<label for="director_context_size">Context size (tokens)</label>
+					<small>0 = use the profile/preset's context. The director fits as many recent messages as the budget allows.</small>
+					<input type="number" id="director_context_size" class="text_pole" min="0" />
 				</div>
 			</div>
 

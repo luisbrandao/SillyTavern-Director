@@ -55,7 +55,7 @@ function setInitialValues() {
 	$("#director_injection_depth").val(extensionSettings.injectionDepth ?? 0);
 	$("#director_injection_role").val(extensionSettings.injectionRole ?? "system");
 	$("#director_injection_template").val(extensionSettings.injectionTemplate ?? "");
-	$("#director_number_of_messages").val(extensionSettings.numberOfMessages ?? 10);
+	$("#director_context_size").val(extensionSettings.contextSize ?? 0);
 	populateConnectionProfiles();
 	populateCompletionPresets();
 }
@@ -127,8 +127,8 @@ function registerListeners() {
 		extensionSettings.responseLength = Math.max(0, Number($(this).val()) || 0);
 		saveSettingsDebounced();
 	});
-	$("#director_number_of_messages").on("input", function () {
-		extensionSettings.numberOfMessages = Math.max(1, Number($(this).val()) || 1);
+	$("#director_context_size").on("input", function () {
+		extensionSettings.contextSize = Math.max(0, Number($(this).val()) || 0);
 		saveSettingsDebounced();
 	});
 	$("#director_injection_depth").on("input", function () {
