@@ -176,12 +176,26 @@ async function sendDirectorRequest(ctx, messages) {
 		if (!maxTokens) maxTokens = 1024;
 
 		debug("Director request", { profileId, maxTokens, preset: effectivePresetName, messages });
+		// Stream the request. Non-streaming responses from remote backends can come back compressed
+		// (e.g. brotli), which SillyTavern's node-fetch backend doesn't always decode -> garbage ->
+		// parse error. Streaming (SSE) responses aren't compressed, matching the path the main reply
+		// already uses successfully.
 		const response = await ctx.ConnectionManagerRequestService.sendRequest(
 			profileId,
 			messages,
 			maxTokens,
-			{ extractData: true, includePreset: true }
+			{ stream: true, extractData: true, includePreset: true }
 		);
+
+		// Streaming returns a generator factory yielding cumulative { text }. Non-streaming (fallback)
+		// returns extracted data with .content.
+		if (typeof response === "function") {
+			let text = "";
+			for await (const chunk of response()) {
+				if (chunk && typeof chunk.text === "string") text = chunk.text;
+			}
+			return text;
+		}
 		return response?.content ?? "";
 	} finally {
 		if (overriddenProfile) overriddenProfile.preset = originalPreset;
