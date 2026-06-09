@@ -33,10 +33,13 @@ export const defaultSettings = {
 
 	// The director instruction. Always appended to the end of the RP prompt for the director pass.
 	directorPrompt: directorPrompt,
-	// Role of the director instruction message in the director's OWN request. Keep it different from
-	// "user" (default: assistant) so chat-completion post-processing doesn't merge it into the last
-	// user message.
-	directorRole: injectionRoles.ASSISTANT,
+	// Role of the director instruction message in the director's OWN request. Must be "user" so the
+	// message array ends on a user turn: standard chat-completion backends (Ollama/vLLM/llama.cpp)
+	// always add a generation prompt, so a trailing "assistant" message renders as a COMPLETED turn
+	// followed by an empty one -> the model emits an end token immediately and dies after 1 token.
+	// "user" makes the model answer a real prompt; works on local backends and remote APIs alike.
+	// ("assistant" only ever worked on prefill-style endpoints that continue a trailing assistant msg.)
+	directorRole: injectionRoles.USER,
 	// Optional clean character context for the director. When non-empty it REPLACES the character
 	// card in the director's "### Persona description" section (useful for messy/monolithic cards).
 	// Leave empty to use the active character card.

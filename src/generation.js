@@ -210,12 +210,13 @@ async function getActiveWorldInfo(ctx, mesNum, contextSize) {
  * Builds the director chat-completion message array, composed like a normal ST prompt:
  * system (persona + player + World Info) + as many recent messages as fit the context budget
  * (context size − reserved response − safety margin) + the director instruction appended last.
- * The instruction uses `directorRole` (default "assistant") so chat-completion post-processing
- * doesn't merge it into the last user message.
+ * The instruction uses `directorRole` (default "user") so the array ends on a user turn — standard
+ * chat-completion backends add a generation prompt, so a trailing "assistant" message would render as
+ * a completed turn and the model would emit an end token immediately (dies after 1 token).
  */
 async function buildDirectorMessages(ctx, mesNum, conn, pendingUserText = "") {
 	const system = await buildDirectorSystemPrompt(ctx, mesNum, conn.contextSize);
-	const directorRole = extensionSettings.directorRole || "assistant";
+	const directorRole = extensionSettings.directorRole || "user";
 	// Resolve {{user}} / {{char}} (etc.) in the director instruction — it's sent to the director model
 	// directly, so SillyTavern won't substitute it for us.
 	const rawPrompt = String(extensionSettings.directorPrompt || "").trim();

@@ -49,7 +49,7 @@ async function loadSettingsUI() {
 function setInitialValues() {
 	$("#director_enabled").prop("checked", !!extensionSettings.enabled);
 	$("#director_prompt").val(extensionSettings.directorPrompt ?? "");
-	$("#director_prompt_role").val(extensionSettings.directorRole ?? "assistant");
+	$("#director_prompt_role").val(extensionSettings.directorRole ?? "user");
 	$("#director_character_override").val(extensionSettings.characterContextOverride ?? "");
 	$("#director_response_length").val(extensionSettings.responseLength ?? 0);
 	$("#director_injection_depth").val(extensionSettings.injectionDepth ?? 0);
