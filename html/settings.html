@@ -10,13 +10,12 @@
 				<span>Director enabled</span>
 			</label>
 
-			<label for="director_prompt">Director prompt</label>
-			<small>Appended to the end of the roleplay prompt for the director pass.</small>
-			<textarea id="director_prompt" class="text_pole" rows="4"></textarea>
+			<label for="director_connection_profile">Connection profile (director model)</label>
+			<small>Run the director pass on a different model than the main reply.</small>
+			<select id="director_connection_profile" class="text_pole"></select>
 
-			<label for="director_character_override">Character context override</label>
-			<small>Replaces the character card in the director's "### Persona description". Leave empty to use the active card. Useful when a card crams example dialogues / keyword lists into its description.</small>
-			<textarea id="director_character_override" class="text_pole" rows="4" placeholder="(empty = use the character card)"></textarea>
+			<label for="director_completion_preset">Completion preset</label>
+			<select id="director_completion_preset" class="text_pole"></select>
 
 			<label for="director_prompt_role">Director prompt role</label>
 			<small>Role of the director instruction in its own request. Keep it off "user" (default: Assistant) so it isn't merged into your last message.</small>
@@ -26,24 +25,9 @@
 				<option value="user">User</option>
 			</select>
 
-			<label for="director_connection_profile">Connection profile (director model)</label>
-			<small>Run the director pass on a different model than the main reply.</small>
-			<select id="director_connection_profile" class="text_pole"></select>
-
-			<label for="director_completion_preset">Completion preset</label>
-			<select id="director_completion_preset" class="text_pole"></select>
-
-			<div class="flex-container flexGap10">
-				<div class="flex1">
-					<label for="director_response_length">Response length</label>
-					<small>0 = use the preset's value</small>
-					<input type="number" id="director_response_length" class="text_pole" min="0" />
-				</div>
-				<div class="flex1">
-					<label for="director_number_of_messages">Recent messages as context</label>
-					<input type="number" id="director_number_of_messages" class="text_pole" min="1" />
-				</div>
-			</div>
+			<label for="director_prompt">Director prompt</label>
+			<small>Appended to the end of the roleplay prompt for the director pass.</small>
+			<textarea id="director_prompt" class="text_pole" rows="4"></textarea>
 
 			<div class="flex-container flexGap10">
 				<div class="flex1">
@@ -63,6 +47,22 @@
 			<label for="director_injection_template">Injection template</label>
 			<small>Wraps the outline when injected into the main reply. <code>{{outline}}</code> is replaced with the generated outline.</small>
 			<textarea id="director_injection_template" class="text_pole" rows="3"></textarea>
+
+			<div class="flex-container flexGap10">
+				<div class="flex1">
+					<label for="director_response_length">Response length</label>
+					<small>0 = use the preset's value</small>
+					<input type="number" id="director_response_length" class="text_pole" min="0" />
+				</div>
+				<div class="flex1">
+					<label for="director_number_of_messages">Recent messages as context</label>
+					<input type="number" id="director_number_of_messages" class="text_pole" min="1" />
+				</div>
+			</div>
+
+			<label for="director_character_override">Character context override</label>
+			<small>Replaces the character card in the director's "### Persona description". Leave empty to use the active card. Useful when a card crams example dialogues / keyword lists into its description.</small>
+			<textarea id="director_character_override" class="text_pole" rows="4" placeholder="(empty = use the character card)"></textarea>
 
 			<div class="flex-container" style="margin-top: 10px;">
 				<input id="director_reset_defaults" class="menu_button" type="button" value="Reset to defaults" title="Reset Director settings to defaults (keeps the connection profile and preset)" />
