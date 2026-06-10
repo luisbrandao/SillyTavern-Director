@@ -38,6 +38,7 @@ The director request is built as labeled sections, then as much history as the c
 ### Persona description       <- character card (or your override)
 ### Player character: <name>  <- your persona
 ### World Info                <- active lorebook entries for the scene
+### Summary                   <- running story summary (Summarize extension), if present
 <recent chat history, newest kept, fit to the context budget>
 <your just-sent message>      <- read from the input box (it isn't in chat yet at this point)
 <director prompt>             <- appended as its own message (default role: user)
@@ -108,6 +109,9 @@ exists, a collapsible **🎬 Director** preview block beneath it.
 - **Token counting** uses SillyTavern's active tokenizer, which may differ slightly from the director
   model's; the safety margin absorbs the drift. Set **Context size** explicitly if the auto value
   looks wrong for your backend.
+- **Summary.** If the built-in Summarize extension has a running summary, it's included as `### Summary`
+  (latest `message.extra.memory` at the director's context point, or the live-injected value). Critical
+  on long RPs for carrying world state that has scrolled out of the recent-message window.
 - **Context fidelity (Option A).** The director sees the character card, persona, World Info, and
   recent history — not a byte-perfect copy of your full main prompt (no author's note ordering, etc.).
   Good enough to direct a scene; can be deepened later.

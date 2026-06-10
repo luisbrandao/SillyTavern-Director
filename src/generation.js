@@ -130,10 +130,11 @@ async function countTokens(ctx, text) {
 }
 
 /**
- * Builds the director system prompt as three labeled sections, always in this order:
+ * Builds the director system prompt as labeled sections, always in this order:
  *   ### Persona description    (character context override, else the character card)
  *   ### Player character: <name>   (always shown; persona description if present)
  *   ### World Info             (active lorebook entries, if any)
+ *   ### Summary                (running story summary from Summarize, if any)
  * Macros like {{user}} / {{char}} are resolved via substituteParams; stray carriage returns stripped.
  */
 async function buildDirectorSystemPrompt(ctx, mesNum, contextSize) {
@@ -181,7 +182,38 @@ async function buildDirectorSystemPrompt(ctx, mesNum, contextSize) {
 		warn("Failed to add world info:", e?.message);
 	}
 
+	// "### Summary" -> the running story summary (built-in Summarize extension), if one exists. Placed
+	// last so it directly precedes the recent message history — the natural "story so far" lead-in. On
+	// long RPs this carries world state that has scrolled out of the recent-message window.
+	try {
+		const summary = sub(getRunningSummary(ctx, mesNum)).trim();
+		if (summary) sections.push(`### Summary\n${summary}`);
+	} catch (e) {
+		warn("Failed to add summary:", e?.message);
+	}
+
 	return sections.join("\n\n").trim();
+}
+
+/**
+ * Returns the running story summary at the director's context point, or "" if none.
+ * Built-in Summarize stores each running summary on `message.extra.memory`; we scan backward from
+ * mesNum for the latest one. Falls back to the value the memory extension is injecting live
+ * (`extensionPrompts['1_memory']`) for setups that don't persist it per-message.
+ */
+function getRunningSummary(ctx, mesNum) {
+	try {
+		const end = Math.min(Number(mesNum), chat.length - 1);
+		for (let i = end; i >= 0; i--) {
+			const mem = chat[i]?.extra?.memory;
+			if (mem && String(mem).trim()) return String(mem).trim();
+		}
+		const live = ctx.extensionPrompts?.["1_memory"]?.value;
+		if (live && String(live).trim()) return String(live).trim();
+	} catch (e) {
+		warn("Failed to read running summary:", e?.message);
+	}
+	return "";
 }
 
 /**
