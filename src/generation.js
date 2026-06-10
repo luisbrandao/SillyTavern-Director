@@ -197,19 +197,37 @@ async function buildDirectorSystemPrompt(ctx, mesNum, contextSize) {
 
 /**
  * Returns the running story summary at the director's context point, or "" if none.
- * Built-in Summarize stores each running summary on `message.extra.memory`; we scan backward from
- * mesNum for the latest one. Falls back to the value the memory extension is injecting live
- * (`extensionPrompts['1_memory']`) for setups that don't persist it per-message.
+ *
+ * Supports two storage formats for `message.extra.memory`:
+ *   - Built-in Summarize: plain string.
+ *   - Tech-Summarize: object {characters, body, lore} — sections are joined with blank lines.
+ *
+ * Scan order: backward through chat up to mesNum (tied to the exact context point), then fall
+ * back to the live extension-prompt value for setups that don't persist per-message
+ * (checks 'tech_summarize' before '1_memory').
  */
 function getRunningSummary(ctx, mesNum) {
+	function extractMemory(mem) {
+		if (!mem) return "";
+		if (typeof mem === "string") return mem.trim();
+		if (typeof mem === "object") {
+			return ["characters", "body", "lore"]
+				.map((k) => String(mem[k] ?? "").trim())
+				.filter(Boolean)
+				.join("\n\n");
+		}
+		return "";
+	}
 	try {
 		const end = Math.min(Number(mesNum), chat.length - 1);
 		for (let i = end; i >= 0; i--) {
-			const mem = chat[i]?.extra?.memory;
-			if (mem && String(mem).trim()) return String(mem).trim();
+			const text = extractMemory(chat[i]?.extra?.memory);
+			if (text) return text;
 		}
-		const live = ctx.extensionPrompts?.["1_memory"]?.value;
-		if (live && String(live).trim()) return String(live).trim();
+		for (const key of ["tech_summarize", "1_memory"]) {
+			const live = ctx.extensionPrompts?.[key]?.value;
+			if (live && String(live).trim()) return String(live).trim();
+		}
 	} catch (e) {
 		warn("Failed to read running summary:", e?.message);
 	}
