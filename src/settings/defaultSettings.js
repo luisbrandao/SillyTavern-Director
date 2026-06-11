@@ -57,7 +57,7 @@ export const defaultSettings = {
 	// How the director outline is injected into the MAIN reply prompt.
 	// depth 0 + role system = appended at the end of the chat (the "end of the RP text").
 	injectionDepth: 0,
-	injectionRole: injectionRoles.ASSISTANT,
+	injectionRole: injectionRoles.USER,
 	// Template wrapping the outline when injected into the main reply. {{outline}} is replaced with
 	// the generated outline. Edit this to change the tag/format or add guiding instructions.
 	injectionTemplate: injectionTemplate,
