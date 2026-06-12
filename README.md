@@ -7,7 +7,7 @@ character's response, Director quietly asks a **separate model** ("the director"
 scene and produce a short **outline of what should happen next turn**. That outline is then injected
 into the main reply request, so your main model writes the prose *guided by the director's plan*.
 
-The point: use a cheap/fast model to plan, and your good (expensive) model to write.
+The point: use a inteligent model to plan and handle the meta, and a cheap model to write the imediate.
 
 It borrows mechanics from both the **Tracker** (intercept the turn, store per-message data, preview
 under the message) and **Guided Generations** (inject an instruction into the reply), but builds the
