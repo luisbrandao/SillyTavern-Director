@@ -25,6 +25,15 @@
 				<option value="user">User</option>
 			</select>
 
+			<label for="director_prompt_profile">Director prompt profile</label>
+			<small>Save alternate director prompts and switch between them. While a profile is selected, edits to the prompt below are saved into it.</small>
+			<div class="flex-container flexGap5 alignItemsCenter">
+				<select id="director_prompt_profile" class="text_pole flex1"></select>
+				<div id="director_prompt_profile_new" class="menu_button fa-solid fa-plus" title="Save the current prompt as a new profile"></div>
+				<div id="director_prompt_profile_rename" class="menu_button fa-solid fa-pencil" title="Rename the selected profile"></div>
+				<div id="director_prompt_profile_delete" class="menu_button fa-solid fa-trash" title="Delete the selected profile (keeps the current prompt text)"></div>
+			</div>
+
 			<label for="director_prompt">Director prompt</label>
 			<small>Appended to the end of the roleplay prompt for the director pass.</small>
 			<textarea id="director_prompt" class="text_pole" rows="4"></textarea>

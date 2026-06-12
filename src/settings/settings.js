@@ -58,6 +58,42 @@ function setInitialValues() {
 	$("#director_context_size").val(extensionSettings.contextSize ?? 0);
 	populateConnectionProfiles();
 	populateCompletionPresets();
+	populatePromptProfiles();
+}
+
+function populatePromptProfiles() {
+	const select = $("#director_prompt_profile");
+	select.empty();
+	select.append($("<option>").val("").text("— no profile (free-form) —"));
+	const profiles = Array.isArray(extensionSettings.promptProfiles) ? extensionSettings.promptProfiles : [];
+	for (const p of profiles) {
+		if (p?.name) select.append($("<option>").val(p.name).text(p.name));
+	}
+	// Drop a stale selection (e.g. the profile was deleted) instead of silently showing the wrong one.
+	const active = String(extensionSettings.activePromptProfile ?? "");
+	if (active && !profiles.some((p) => p?.name === active)) {
+		extensionSettings.activePromptProfile = "";
+	}
+	select.val(extensionSettings.activePromptProfile ?? "");
+}
+
+function getActivePromptProfile() {
+	const name = String(extensionSettings.activePromptProfile ?? "");
+	if (!name) return null;
+	return (extensionSettings.promptProfiles ?? []).find((p) => p?.name === name) ?? null;
+}
+
+/** Prompts for a profile name; returns a trimmed, unique name or null if cancelled/invalid. */
+async function askPromptProfileName(title, initial = "") {
+	const input = await callGenericPopup(title, POPUP_TYPE.INPUT, initial);
+	if (input === null || input === false) return null;
+	const name = String(input).trim();
+	if (!name) return null;
+	if ((extensionSettings.promptProfiles ?? []).some((p) => p?.name === name)) {
+		window.toastr?.error?.(`A director prompt profile named "${name}" already exists.`);
+		return null;
+	}
+	return name;
 }
 
 function populateConnectionProfiles() {
@@ -103,6 +139,56 @@ function registerListeners() {
 	});
 	$("#director_prompt").on("input", function () {
 		extensionSettings.directorPrompt = String($(this).val());
+		// While a profile is selected the editor is bound to it — keep the profile copy in sync.
+		const profile = getActivePromptProfile();
+		if (profile) profile.prompt = extensionSettings.directorPrompt;
+		saveSettingsDebounced();
+	});
+	$("#director_prompt_profile").on("change", function () {
+		const name = String($(this).val());
+		extensionSettings.activePromptProfile = name;
+		const profile = getActivePromptProfile();
+		// Switching to a profile loads its prompt; switching to free-form keeps the current text.
+		if (profile) {
+			extensionSettings.directorPrompt = String(profile.prompt ?? "");
+			$("#director_prompt").val(extensionSettings.directorPrompt);
+		}
+		saveSettingsDebounced();
+	});
+	$("#director_prompt_profile_new").on("click", async function () {
+		const name = await askPromptProfileName("Name for the new director prompt profile:");
+		if (!name) return;
+		if (!Array.isArray(extensionSettings.promptProfiles)) extensionSettings.promptProfiles = [];
+		extensionSettings.promptProfiles.push({ name, prompt: String(extensionSettings.directorPrompt ?? "") });
+		extensionSettings.activePromptProfile = name;
+		populatePromptProfiles();
+		saveSettingsDebounced();
+		window.toastr?.success?.(`Director prompt profile "${name}" created.`);
+	});
+	$("#director_prompt_profile_rename").on("click", async function () {
+		const profile = getActivePromptProfile();
+		if (!profile) {
+			window.toastr?.info?.("Select a director prompt profile to rename.");
+			return;
+		}
+		const name = await askPromptProfileName("New name for the profile:", profile.name);
+		if (!name) return;
+		profile.name = name;
+		extensionSettings.activePromptProfile = name;
+		populatePromptProfiles();
+		saveSettingsDebounced();
+	});
+	$("#director_prompt_profile_delete").on("click", async function () {
+		const profile = getActivePromptProfile();
+		if (!profile) {
+			window.toastr?.info?.("Select a director prompt profile to delete.");
+			return;
+		}
+		const confirmed = await callGenericPopup(`Delete director prompt profile "${profile.name}"? The current prompt text stays in the editor.`, POPUP_TYPE.CONFIRM);
+		if (!confirmed) return;
+		extensionSettings.promptProfiles = (extensionSettings.promptProfiles ?? []).filter((p) => p !== profile);
+		extensionSettings.activePromptProfile = "";
+		populatePromptProfiles();
 		saveSettingsDebounced();
 	});
 	$("#director_prompt_role").on("change", function () {
@@ -151,12 +237,15 @@ function registerListeners() {
  * environment-specific model choice), then re-renders the UI.
  */
 async function resetToDefaults() {
-	const confirmed = await callGenericPopup("Reset Director settings to defaults? (keeps the connection profile and preset)", POPUP_TYPE.CONFIRM);
+	const confirmed = await callGenericPopup("Reset Director settings to defaults? (keeps the connection profile, preset, and saved prompt profiles)", POPUP_TYPE.CONFIRM);
 	if (!confirmed) return;
 
 	const preserved = {
 		selectedProfile: extensionSettings.selectedProfile,
 		selectedCompletionPreset: extensionSettings.selectedCompletionPreset,
+		// Saved prompt profiles are user-authored content; keep them. The active selection clears to
+		// free-form, though — the prompt editor now holds the default text, not the profile's.
+		promptProfiles: extensionSettings.promptProfiles,
 	};
 	for (const [key, value] of Object.entries(defaultSettings)) {
 		extensionSettings[key] = structuredClone(value);

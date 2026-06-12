@@ -68,6 +68,7 @@ works — the extension resolves its own path), then enable **Director** in
 |---|---|
 | **Director enabled** | Master on/off. |
 | **Director prompt** | The instruction sent to the director model, appended to the end of the RP. Default: *"You are a scene director. Consider the state of the world and respond with only an outline of the actions that should happen on the next turn"*. |
+| **Director prompt profile** | Save the prompt under a name and switch between alternate wordings. `➕` saves the current prompt as a new profile, `✏️` renames, `🗑️` deletes (the prompt text stays in the editor). While a profile is selected, edits to the prompt are saved into it; "no profile" is free-form. "Reset to defaults" keeps your saved profiles. |
 | **Director prompt role** | Role of that instruction message in the director request. Default **User** so the request ends on a user turn. Standard chat-completion backends (Ollama/vLLM/llama.cpp) always add a generation prompt, so a trailing **Assistant** message renders as a completed turn and the model dies after one token. Only use **Assistant** with prefill-style endpoints that continue a trailing assistant message. |
 | **Character context override** | Optional. Replaces the character card in the `### Persona description` section — handy for messy/monolithic cards. Empty = use the active card. |
 | **Connection profile (director model)** | The connection profile the director pass runs on. `current` = your active connection. Pick a different one to run the director on a separate model. |

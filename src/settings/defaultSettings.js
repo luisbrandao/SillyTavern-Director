@@ -40,6 +40,12 @@ export const defaultSettings = {
 	// "user" makes the model answer a real prompt; works on local backends and remote APIs alike.
 	// ("assistant" only ever worked on prefill-style endpoints that continue a trailing assistant msg.)
 	directorRole: injectionRoles.USER,
+	// Named director-prompt profiles: alternate instruction wordings to switch between. The effective
+	// prompt is always `directorPrompt`; a profile is a named, persistent copy bound to the editor.
+	promptProfiles: [], // [{ name, prompt }]
+	// Name of the profile the prompt editor is bound to. "" = free-form (no profile selected):
+	// edits change only directorPrompt. With a profile active, edits also save back into it.
+	activePromptProfile: "",
 	// Optional clean character context for the director. When non-empty it REPLACES the character
 	// card in the director's "### Persona description" section (useful for messy/monolithic cards).
 	// Leave empty to use the active character card.
