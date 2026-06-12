@@ -35,11 +35,14 @@ reference but aren't re-injected.
 The director request is built as labeled sections, then as much history as the context budget allows:
 
 ```
+### Author's Note             <- if positioned "Before scenario"
 ### Persona description       <- character card (or your override)
 ### Player character: <name>  <- your persona
+### Author's Note             <- if positioned "After scenario"
 ### World Info                <- active lorebook entries for the scene
 ### Summary                   <- running story summary (Summarize extension), if present
 <recent chat history, newest kept, fit to the context budget>
+   (an "In-chat" Author's Note is inserted at its configured depth/role)
 <your just-sent message>      <- read from the input box (it isn't in chat yet at this point)
 <director prompt>             <- appended as its own message (default role: user)
 ```
@@ -112,8 +115,12 @@ exists, a collapsible **🎬 Director** preview block beneath it.
 - **Summary.** If the built-in Summarize extension has a running summary, it's included as `### Summary`
   (latest `message.extra.memory` at the director's context point, or the live-injected value). Critical
   on long RPs for carrying world state that has scrolled out of the recent-message window.
-- **Context fidelity (Option A).** The director sees the character card, persona, World Info, and
-  recent history — not a byte-perfect copy of your full main prompt (no author's note ordering, etc.).
+- **Author's Note.** The active Author's Note (including a merged Character Author's Note, honoring
+  the insertion frequency) is placed where you configured it: `Before scenario` / `After scenario`
+  become an `### Author's Note` system section; `In-chat @ Depth` is inserted into the history at
+  that depth with the configured role.
+- **Context fidelity (Option A).** The director sees the character card, persona, Author's Note,
+  World Info, and recent history — not a byte-perfect copy of your full main prompt.
   Good enough to direct a scene; can be deepened later.
 - **Persona name** in `### Player character:` is whatever `{{user}}` resolves to (set your persona
   name in SillyTavern if it shows "Unnamed Persona").
