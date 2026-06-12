@@ -22,6 +22,11 @@
 	opacity: 0.7;
 }
 
+/* The inline controls only make sense with the outline visible — hide them while collapsed. */
+.director_preview details:not([open]) .director_controls {
+	display: none;
+}
+
 .director_preview .director_btn {
 	cursor: pointer;
 	transition: opacity 0.15s ease, color 0.15s ease;
