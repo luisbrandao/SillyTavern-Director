@@ -71,3 +71,15 @@
 .mes_director_button {
 	cursor: pointer;
 }
+
+/* Outline editor popup: the textarea fills the (large) dialog instead of a fixed row count.
+   The header (.popup-content) must not grow, or it eats the space the textarea should take. */
+.director_outline_popup .popup-content {
+	flex-grow: 0;
+}
+
+.director_outline_popup .popup-input {
+	flex-grow: 1;
+	min-height: 10em;
+	resize: vertical;
+}

@@ -41,6 +41,7 @@ export class DirectorInterface {
 
 		const popup = new Popup(header, POPUP_TYPE.INPUT, current, {
 			wide: true,
+			large: true,
 			rows: 14,
 			okButton: "Save",
 			cancelButton: "Close",
@@ -72,6 +73,9 @@ export class DirectorInterface {
 				},
 			],
 		});
+
+		// Tag the dialog so style.css can make the textarea fill the (large) popup and stay resizable.
+		popup.dlg.classList.add("director_outline_popup");
 
 		const result = await popup.show();
 		// INPUT popups return the textarea string on Save; false/null on Close/Delete.
