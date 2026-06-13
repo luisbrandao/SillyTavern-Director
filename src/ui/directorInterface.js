@@ -3,7 +3,7 @@ import { dragElement } from "../../../../../../scripts/RossAscends-mods.js";
 import { loadMovingUIState } from "../../../../../../scripts/power-user.js";
 import { callGenericPopup, POPUP_TYPE } from "../../../../../../scripts/popup.js";
 import { isEnabled, toggleExtension } from "../settings/settings.js";
-import { getLastNonSystemMessageIndex, getLastMessageWithDirector, error } from "../../lib/utils.js";
+import { getLastNonSystemMessageIndex, error } from "../../lib/utils.js";
 import { saveDirectorToMessage, regenerateDirectorForMessage, removeDirectorFromMessage } from "../director.js";
 
 /**
@@ -203,10 +203,9 @@ export class DirectorInterface {
 			.on("click.directormenu", "#director-ui-item", () => DirectorInterface.openInterface());
 	}
 
-	/** Magic-wand entry: open the panel on the last message with an outline (else the last message). */
+	/** Magic-wand entry: open the panel on the current (last) message, even if it has no outline yet. */
 	static openInterface() {
-		let mesId = getLastMessageWithDirector();
-		if (!Number.isInteger(mesId) || mesId < 0 || !chat[mesId]) mesId = getLastNonSystemMessageIndex();
+		let mesId = getLastNonSystemMessageIndex();
 		if (!Number.isInteger(mesId) || mesId < 0 || !chat[mesId]) {
 			window.toastr?.info?.("No chat messages are available yet. Send a message first.");
 			return;
