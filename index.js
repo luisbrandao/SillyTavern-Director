@@ -27,6 +27,9 @@ eventSource.on(event_types.CHAT_CHANGED, eventHandlers.onChatChanged);
 eventSource.on(event_types.GENERATION_AFTER_COMMANDS, eventHandlers.onGenerateAfterCommands);
 eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, eventHandlers.onCharacterMessageRendered);
 eventSource.on(event_types.USER_MESSAGE_RENDERED, eventHandlers.onUserMessageRendered);
+// Attach the outline to the streaming reply as soon as its placeholder appears (first token),
+// rather than waiting for streaming to finish. No-op when streaming is off.
+eventSource.on(event_types.STREAM_TOKEN_RECEIVED, eventHandlers.onStreamTokenReceived);
 
 SlashCommandParser.addCommandObject(SlashCommand.fromProps({
 	name: "director-regenerate",
