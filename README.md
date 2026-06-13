@@ -7,7 +7,7 @@ character's response, Director quietly asks a **separate model** ("the director"
 scene and produce a short **outline of what should happen next turn**. That outline is then injected
 into the main reply request, so your main model writes the prose *guided by the director's plan*.
 
-The point: use a inteligent model to plan and handle the meta, and a cheap model to write the imediate.
+The point: use an intelligent model to plan and handle the meta, and a cheap model to write the immediate prose.
 
 It borrows mechanics from both the **Tracker** (intercept the turn, store per-message data, preview
 under the message) and **Guided Generations** (inject an instruction into the reply), but builds the
@@ -29,7 +29,8 @@ for the separate connection — instead of hand-rewriting message text.
    it. You can edit, regenerate, or delete it.
 
 Only the latest outline is ever sent to the main model — older outlines stay on their messages for
-reference but aren't re-injected.
+reference but aren't re-injected. (The **director itself** can optionally see its own past outlines —
+see *Previous outlines in director context* below.)
 
 ### The director's prompt is composed like a normal ST prompt
 The director request is built as labeled sections, then as much history as the context budget allows:
@@ -43,6 +44,8 @@ The director request is built as labeled sections, then as much history as the c
 ### Summary                   <- running story summary (Summarize extension), if present
 <recent chat history, newest kept, fit to the context budget>
    (an "In-chat" Author's Note is inserted at its configured depth/role)
+   (with "Previous outlines" > 0, the last N stored outlines are interleaved
+    as system messages, each right before the bot message it directed)
 <your just-sent message>      <- read from the input box (it isn't in chat yet at this point)
 <director prompt>             <- appended as its own message (default role: user)
 ```
@@ -67,18 +70,37 @@ works — the extension resolves its own path), then enable **Director** in
 | Setting | What it does |
 |---|---|
 | **Director enabled** | Master on/off. |
-| **Director prompt** | The instruction sent to the director model, appended to the end of the RP. Default: *"You are a scene director. Consider the state of the world and respond with only an outline of the actions that should happen on the next turn"*. |
-| **Director prompt profile** | Save the prompt under a name and switch between alternate wordings. `➕` saves the current prompt as a new profile, `✏️` renames, `🗑️` deletes (the prompt text stays in the editor). While a profile is selected, edits to the prompt are saved into it; "no profile" is free-form. "Reset to defaults" keeps your saved profiles. |
+| **Director prompt** | The instruction sent to the director model, appended to the end of the RP. The default is the **Default** built-in prompt (see `prompts/Default.txt`). |
+| **Director prompt profile** | Save the prompt under a name and switch between alternate wordings. `➕` saves the current prompt as a new profile, `✏️` renames, `🗑️` deletes (the prompt text stays in the editor). While a profile is selected, edits to the prompt are saved into it; "no profile" is free-form. "Reset to defaults" keeps your saved profiles. Ships with built-in profiles loaded from `prompts/*.txt` (the filename is the profile name): **Default**, **Concise**, **Slow Burn**, **Plot Driver**, **Character Voice**, **Wildcard**. They're seeded once and become ordinary profiles — edit, rename, or delete them freely. |
 | **Director prompt role** | Role of that instruction message in the director request. Default **User** so the request ends on a user turn. Standard chat-completion backends (Ollama/vLLM/llama.cpp) always add a generation prompt, so a trailing **Assistant** message renders as a completed turn and the model dies after one token. Only use **Assistant** with prefill-style endpoints that continue a trailing assistant message. |
 | **Character context override** | Optional. Replaces the character card in the `### Persona description` section — handy for messy/monolithic cards. Empty = use the active card. |
 | **Connection profile (director model)** | The connection profile the director pass runs on. `current` = your active connection. Pick a different one to run the director on a separate model. |
 | **Completion preset** | Completion preset for the director pass. `current` = the profile's own preset. |
 | **Response length** | Max tokens for the director outline. `0` = use the preset's value. Set e.g. `800` for short outlines. |
 | **Context size (tokens)** | Token budget for composing the director request. `0` = auto (the profile/preset's own context, falling back to the app's current max context). |
+| **Previous outlines in director context** | How many of the director's own past outlines to include in its request, each interleaved as a system message right before the bot message it directed — so new directions stay coherent with earlier decisions. `0` = none (default). |
 | **Injection depth** | Where the outline is injected into the main reply (`0` = end of chat). |
 | **Injection role** | Role of the injected outline in the main reply (`system` / `user` / `assistant`). |
 | **Injection template** | Wraps the outline before injection. `{{outline}}` is replaced with the generated text. Default `<director>\n{{outline}}\n</director>`. |
 | **Reset to defaults** | Restores defaults, keeping your connection profile + preset. |
+
+### Built-in director prompts
+
+The extension ships alternative director prompts as `prompts/*.txt` — the filename is the profile
+name. On load they're seeded (once) into your prompt profiles:
+
+| Profile | Directing style |
+|---|---|
+| **Default** | Balanced: steward the plot, keep characters distinct, control tone and pacing. |
+| **Concise** | The same guardrails compressed into a short instruction, for small director models or tight contexts. |
+| **Slow Burn** | Advance by inches: let moments breathe, favor interiority and subtext, save escalation until it's earned. |
+| **Plot Driver** | Momentum: every beat must change something — reveal, raise stakes, force a choice, or pay off a setup. |
+| **Character Voice** | Actors' director: plot moves only as far as the characters carry it; each one gets a distinct reaction and a hint of voice. |
+| **Wildcard** | One plausible-but-unexpected complication per turn, grown from established threads — surprising, not random. |
+
+To add your own, drop a `.txt` in `prompts/` **and** register the filename in
+`src/settings/promptLoader.js` (the browser can't list the folder) — or just use the `➕` profile
+button in the UI.
 
 ---
 

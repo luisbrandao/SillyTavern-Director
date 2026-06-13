@@ -3,7 +3,7 @@
 ## What this extension does
 Director runs a **two-model pass** around a normal reply:
 1. The user sends a message. Before the main reply is generated, Director intercepts (at `GENERATION_AFTER_COMMANDS`, like the Tracker extension does).
-2. Director sends its own request to a **separate connection profile/model** (the "director model"): the current roleplay context with the configurable **director prompt** appended at the end. The model returns an *outline of what should happen next turn*.
+2. Director sends its own request to a **separate connection profile/model** (the "director model"): the current roleplay context with the configurable **director prompt** appended at the end. Optionally (`previousOutlines` setting, default 0) the last N stored outlines are interleaved into that history as system messages — each right before the bot message it directed — so new directions stay coherent with past decisions. The model returns an *outline of what should happen next turn*.
 3. Director stores that outline on the upcoming message and **injects only the latest outline** into the MAIN reply prompt (appended at the end of the RP text), then lets the main model generate the actual reply.
 4. The outline is shown under the message (like the Tracker preview) and can be edited / regenerated / deleted.
 
@@ -12,7 +12,8 @@ Goal: direct the scene with a cheap/fast model, write the prose with the main mo
 ## Architecture & conventions
 - **Entry:** `index.js` — settings init, event wiring, slash commands.
 - **Core:** `src/director.js` (orchestration: intercept → generate → store → inject), `src/generation.js` (the independent director request), `src/events.js` (event handlers), `src/settings/` (config + defaults), `src/ui/` (per-message preview + edit/delete/regenerate).
-- **Storage:** the outline lives on the message object as `chat[mesId].director` (mirrors how Tracker uses `chat[mesId].tracker`). Only the **last** message's outline is injected — never the whole history.
+- **Built-in prompts:** `prompts/*.txt`, one per director prompt profile — the filename (minus `.txt`) is the profile title. The browser can't list a directory over HTTP, so every shipped file must be registered in `PROMPT_FILES` in `src/settings/promptLoader.js`. `prompts/Default.txt` is the source of truth for the default `directorPrompt` (the string in `defaultSettings.js` is only a fetch-failure fallback). Built-ins are seeded into `promptProfiles` **once** (names tracked in `seededPromptProfiles`) and become ordinary user profiles — a reload must never resurrect a deleted/renamed one.
+- **Storage:** the outline lives on the message object as `chat[mesId].director` (mirrors how Tracker uses `chat[mesId].tracker`). Only the **last** message's outline is injected into the MAIN prompt — never the whole history. (The director's OWN request may interleave the last N stored outlines per the `previousOutlines` setting; that happens in `buildDirectorMessages` and never touches the main prompt.)
 - **Injection: use the vanilla `setExtensionPrompt(...)` mechanism** (IN_CHAT, depth/role from settings) to append the outline to the main prompt. Do NOT hand-rewrite `chat[mesId].mes` the way Tracker's inline mode does — it's fragile and fights other extensions.
 - **Independent connection:** use `ConnectionManagerRequestService` with the configured profile. To honor a dedicated completion preset, temporarily set `profile.preset` for the one request and restore it in `finally` (the core hardcodes `presetName: profile.preset`). Pull max-tokens from the preset (`openai_max_tokens` / `genamt`) when no explicit Response Length override is set — a hardcoded default silently truncates.
 

@@ -18,11 +18,11 @@
 			<select id="director_completion_preset" class="text_pole"></select>
 
 			<label for="director_prompt_role">Director prompt role</label>
-			<small>Role of the director instruction in its own request. Keep it off "user" (default: Assistant) so it isn't merged into your last message.</small>
+			<small>Role of the director instruction in its own request. Default: User, so the request ends on a user turn — standard backends stop after one token on a trailing Assistant message. Only use Assistant with prefill-style endpoints.</small>
 			<select id="director_prompt_role" class="text_pole">
-				<option value="assistant">Assistant</option>
-				<option value="system">System</option>
 				<option value="user">User</option>
+				<option value="system">System</option>
+				<option value="assistant">Assistant</option>
 			</select>
 
 			<label for="director_prompt_profile">Director prompt profile</label>
@@ -69,6 +69,10 @@
 					<input type="number" id="director_context_size" class="text_pole" min="0" />
 				</div>
 			</div>
+
+			<label for="director_previous_outlines">Previous outlines in director context</label>
+			<small>How many of the director's own past outlines to show it (each placed before the message it directed), so new directions stay coherent with earlier decisions. 0 = none.</small>
+			<input type="number" id="director_previous_outlines" class="text_pole" min="0" />
 
 			<label for="director_character_override">Character context override</label>
 			<small>Replaces the character card in the director's "### Persona description". Leave empty to use the active card. Useful when a card crams example dialogues / keyword lists into its description.</small>

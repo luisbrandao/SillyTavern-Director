@@ -303,6 +303,9 @@ async function getActiveWorldInfo(ctx, mesNum, contextSize) {
  * Builds the director chat-completion message array, composed like a normal ST prompt:
  * system (persona + player + World Info) + as many recent messages as fit the context budget
  * (context size − reserved response − safety margin) + the director instruction appended last.
+ * When `previousOutlines` > 0, the last N stored director outlines are interleaved into the
+ * history as system messages (each right before the bot message it directed) so the director
+ * works in coherence with its own past decisions.
  * The instruction uses `directorRole` (default "user") so the array ends on a user turn — standard
  * chat-completion backends add a generation prompt, so a trailing "assistant" message would render as
  * a completed turn and the model would emit an end token immediately (dies after 1 token).
@@ -333,13 +336,34 @@ async function buildDirectorMessages(ctx, mesNum, conn, pendingUserText = "") {
 	if (pending) used += (await countTokens(ctx, pending)) + PER_MESSAGE_OVERHEAD;
 	if (inChatNote) used += (await countTokens(ctx, inChatNote.content)) + PER_MESSAGE_OVERHEAD;
 
-	const history = chat
-		.filter((c, index) => !c.is_system && index <= mesNum)
-		.map((c) => ({
-			role: c.is_user ? "user" : "assistant",
-			content: String(c.mes || "").replace(BLOCK_RE, "").trim(),
-		}))
-		.filter((m) => m.content);
+	const source = chat
+		.map((c, index) => ({ c, index }))
+		.filter(({ c, index }) => !c.is_system && index <= mesNum);
+
+	// The last N messages carrying a stored director outline (chat[i].director) get that outline
+	// interleaved as a system message right before them, so the director sees its own recent
+	// decisions and can stay coherent with them. previousOutlines = 0 disables this.
+	const outlineLimit = Math.max(0, Number(extensionSettings.previousOutlines) || 0);
+	const outlineIndexes = new Set(
+		outlineLimit > 0
+			? source
+				.filter(({ c }) => String(c.director ?? "").trim())
+				.slice(-outlineLimit)
+				.map(({ index }) => index)
+			: []
+	);
+
+	const history = [];
+	let outlinesIncluded = 0;
+	for (const { c, index } of source) {
+		const content = String(c.mes || "").replace(BLOCK_RE, "").trim();
+		if (!content) continue;
+		if (outlineIndexes.has(index)) {
+			history.push({ role: "system", content: `[Scene direction previously given by the director for the following message]\n${String(c.director).trim()}` });
+			outlinesIncluded++;
+		}
+		history.push({ role: c.is_user ? "user" : "assistant", content });
+	}
 
 	// Fill from newest backward; always keep the most recent message even if it alone overflows.
 	const included = [];
@@ -358,6 +382,8 @@ async function buildDirectorMessages(ctx, mesNum, conn, pendingUserText = "") {
 		usedTokens: used,
 		includedMessages: included.length,
 		totalMessages: history.length,
+		previousOutlinesLimit: outlineLimit,
+		previousOutlinesInterleaved: outlinesIncluded,
 		hasPendingUserMessage: !!pending,
 		authorsNote: authorsNote ? { position: authorsNote.position, depth: authorsNote.depth, role: authorsNote.role } : null,
 	});

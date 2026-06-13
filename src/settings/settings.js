@@ -4,6 +4,7 @@ import { callGenericPopup, POPUP_TYPE } from "../../../../../../scripts/popup.js
 
 import { extensionSettings, extensionFolderPath } from "../../index.js";
 import { defaultSettings } from "./defaultSettings.js";
+import { loadBuiltinPromptProfiles, DEFAULT_PROFILE_NAME } from "./promptLoader.js";
 import { debug, error } from "../../lib/utils.js";
 
 /**
@@ -20,16 +21,43 @@ export function resolveProfile(ctx, name) {
 }
 
 /**
- * Initializes settings: merges defaults for missing keys and loads the settings UI.
+ * Initializes settings: loads the built-in director prompts (prompts/*.txt), merges defaults for
+ * missing keys, seeds the built-in prompt profiles, and loads the settings UI.
  */
 export async function initSettings() {
+	const builtins = await loadBuiltinPromptProfiles();
+
+	// prompts/Default.txt is the source of truth for the default director prompt — patch it over the
+	// (short fallback) default BEFORE merging, so fresh installs and reset-to-defaults both use it.
+	const builtinDefault = builtins.find((p) => p.name === DEFAULT_PROFILE_NAME);
+	if (builtinDefault) defaultSettings.directorPrompt = builtinDefault.prompt;
+
 	for (const [key, value] of Object.entries(defaultSettings)) {
 		if (extensionSettings[key] === undefined) {
 			extensionSettings[key] = structuredClone(value);
 		}
 	}
+	seedBuiltinPromptProfiles(builtins);
 	saveSettingsDebounced();
 	await loadSettingsUI();
+}
+
+/**
+ * Seeds the built-in prompts into the user's prompt profiles. Each built-in is seeded exactly ONCE
+ * (tracked by name in `seededPromptProfiles`): the profiles are ordinary user-editable entries
+ * afterwards, and a rename/delete must not be undone by the next reload. A user profile that
+ * already uses a built-in name is never overwritten.
+ */
+function seedBuiltinPromptProfiles(builtins) {
+	if (!Array.isArray(extensionSettings.promptProfiles)) extensionSettings.promptProfiles = [];
+	if (!Array.isArray(extensionSettings.seededPromptProfiles)) extensionSettings.seededPromptProfiles = [];
+	for (const builtin of builtins) {
+		if (extensionSettings.seededPromptProfiles.includes(builtin.name)) continue;
+		extensionSettings.seededPromptProfiles.push(builtin.name);
+		if (extensionSettings.promptProfiles.some((p) => p?.name === builtin.name)) continue;
+		extensionSettings.promptProfiles.push({ name: builtin.name, prompt: builtin.prompt });
+		debug("Seeded built-in director prompt profile", builtin.name);
+	}
 }
 
 async function loadSettingsUI() {
@@ -56,6 +84,7 @@ function setInitialValues() {
 	$("#director_injection_role").val(extensionSettings.injectionRole ?? "system");
 	$("#director_injection_template").val(extensionSettings.injectionTemplate ?? "");
 	$("#director_context_size").val(extensionSettings.contextSize ?? 0);
+	$("#director_previous_outlines").val(extensionSettings.previousOutlines ?? 0);
 	populateConnectionProfiles();
 	populateCompletionPresets();
 	populatePromptProfiles();
@@ -217,6 +246,10 @@ function registerListeners() {
 		extensionSettings.contextSize = Math.max(0, Number($(this).val()) || 0);
 		saveSettingsDebounced();
 	});
+	$("#director_previous_outlines").on("input", function () {
+		extensionSettings.previousOutlines = Math.max(0, Number($(this).val()) || 0);
+		saveSettingsDebounced();
+	});
 	$("#director_injection_depth").on("input", function () {
 		extensionSettings.injectionDepth = Math.max(0, Number($(this).val()) || 0);
 		saveSettingsDebounced();
@@ -246,6 +279,8 @@ async function resetToDefaults() {
 		// Saved prompt profiles are user-authored content; keep them. The active selection clears to
 		// free-form, though — the prompt editor now holds the default text, not the profile's.
 		promptProfiles: extensionSettings.promptProfiles,
+		// Keep the seed bookkeeping too, or the next reload would resurrect deleted built-ins.
+		seededPromptProfiles: extensionSettings.seededPromptProfiles,
 	};
 	for (const [key, value] of Object.entries(defaultSettings)) {
 		extensionSettings[key] = structuredClone(value);
