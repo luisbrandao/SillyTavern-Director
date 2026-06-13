@@ -163,8 +163,7 @@ function populateCompletionPresets() {
 
 function registerListeners() {
 	$("#director_enabled").on("change", function () {
-		extensionSettings.enabled = $(this).prop("checked");
-		saveSettingsDebounced();
+		toggleExtension($(this).prop("checked"));
 	});
 	$("#director_prompt").on("input", function () {
 		extensionSettings.directorPrompt = String($(this).val());
@@ -298,11 +297,14 @@ export function isEnabled() {
 }
 
 /**
- * Enables/disables the director and syncs the toggle.
+ * Enables/disables the director and syncs every toggle that reflects it: the settings checkbox and
+ * the interface panel's global toggle. Single source of truth, so a change from either side keeps
+ * both in sync.
  * @param {boolean} enabled
  */
 export async function toggleExtension(enabled) {
 	extensionSettings.enabled = !!enabled;
 	$("#director_enabled").prop("checked", extensionSettings.enabled);
+	$("#director_global_toggle").prop("checked", extensionSettings.enabled);
 	saveSettingsDebounced();
 }
