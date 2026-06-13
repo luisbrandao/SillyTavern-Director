@@ -359,7 +359,7 @@ async function buildDirectorMessages(ctx, mesNum, conn, pendingUserText = "") {
 		const content = String(c.mes || "").replace(BLOCK_RE, "").trim();
 		if (!content) continue;
 		if (outlineIndexes.has(index)) {
-			history.push({ role: "system", content: `[Scene direction previously given by the director for the following message]\n${String(c.director).trim()}` });
+			history.push({ role: "system", content: `<director>\nScene direction previously given by the director for the following message:\n\n${String(c.director).trim()}\n</director>` });
 			outlinesIncluded++;
 		}
 		history.push({ role: c.is_user ? "user" : "assistant", content });
