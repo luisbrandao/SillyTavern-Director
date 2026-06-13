@@ -70,10 +70,30 @@
 	font-weight: 700;
 }
 
-#directorEnhancedInterface #directorInterfaceToggle {
-	justify-content: center;
-	gap: 8px;
+#directorEnhancedInterface #directorInterfaceHeaderBar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+/* Green/red global on-off switch in the header (ported from the Tracker interface). */
+#directorEnhancedInterface #directorInterfaceEnableToggle {
+	display: flex;
+	align-items: center;
+	gap: 5px;
 	cursor: pointer;
+	font-size: 0.9em;
+	white-space: nowrap;
+	color: var(--fullred);
+}
+
+#directorEnhancedInterface #directorInterfaceEnableToggle.toggleEnabled {
+	color: var(--active);
+}
+
+#directorEnhancedInterface #directorInterfaceEnableToggle i {
+	font-size: 1.4em;
 }
 
 #directorEnhancedInterface #directorInterfaceContents {

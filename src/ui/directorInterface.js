@@ -32,11 +32,15 @@ export class DirectorInterface {
 			<div id="directorEnhancedInterfaceheader" class="fa-solid fa-grip drag-grabber hoverglow"></div>
 			<div id="directorInterfaceClose" class="fa-solid fa-circle-xmark hoverglow dragClose"></div>
 		</div>`;
-		const header = `<div id="directorInterfaceHeader">Director</div>`;
-		const toggleBar = `<label id="directorInterfaceToggle" class="checkbox_label" title="Enable or disable the Director globally (same as the settings checkbox)">
-			<input type="checkbox" id="director_global_toggle" />
-			<span>Director enabled</span>
-		</label>`;
+		// Header bar: title + a green/red on-off switch (mirrors the settings checkbox), ported from
+		// the Tracker interface. fa-toggle-on (green via .toggleEnabled) ↔ fa-toggle-off (red).
+		const headerBar = `<div id="directorInterfaceHeaderBar" class="flex-container alignItemsCenter">
+			<div id="directorInterfaceHeader">Director</div>
+			<div id="directorInterfaceEnableToggle" class="director-enable-toggle interactable" tabindex="0" title="Enable/disable the Director globally">
+				<i class="fa-solid fa-toggle-on"></i>
+				<span class="director-enable-label">Enabled</span>
+			</div>
+		</div>`;
 		const contents = `<div id="directorInterfaceContents" class="scrollY"></div>`;
 		const footer = `<div id="directorInterfaceFooter">
 			<button id="directorInterfaceSave" class="menu_button menu_button_default interactable" tabindex="0">Save</button>
@@ -46,7 +50,7 @@ export class DirectorInterface {
 
 		const el = $(template);
 		el.attr("id", "directorEnhancedInterface").removeClass("zoomed_avatar").addClass("draggable").empty();
-		el.append(controlBarHtml).append(header).append(toggleBar).append(contents).append(footer);
+		el.append(controlBarHtml).append(headerBar).append(contents).append(footer);
 		$("#movingDivs").append(el);
 
 		loadMovingUIState();
@@ -57,16 +61,31 @@ export class DirectorInterface {
 
 		this.container = el;
 		this.header = el.find("#directorInterfaceHeader");
+		this.enableToggle = el.find("#directorInterfaceEnableToggle");
 		this.contentArea = el.find("#directorInterfaceContents");
-		this.toggle = el.find("#director_global_toggle");
 		this.saveButton = el.find("#directorInterfaceSave");
 		this.regenerateButton = el.find("#directorInterfaceRegenerate");
 		this.deleteButton = el.find("#directorInterfaceDelete");
 
-		this.toggle.on("change", () => toggleExtension(this.toggle.prop("checked")));
+		this.enableToggle.on("click", async () => {
+			await toggleExtension(!isEnabled());
+			this.updateEnableToggle();
+		});
 		this.saveButton.on("click", () => this.saveOutline());
 		this.regenerateButton.on("click", () => this.regenerateOutline());
 		this.deleteButton.on("click", () => this.removeOutline());
+		this.updateEnableToggle();
+	}
+
+	/** Syncs the green/red on-off switch in the header with the current enabled setting. */
+	updateEnableToggle() {
+		if (!this.enableToggle) return;
+		const enabled = isEnabled();
+		this.enableToggle.toggleClass("toggleEnabled", enabled);
+		this.enableToggle.find("i")
+			.toggleClass("fa-toggle-on", enabled)
+			.toggleClass("fa-toggle-off", !enabled);
+		this.enableToggle.find(".director-enable-label").text(enabled ? "Enabled" : "Disabled");
 	}
 
 	/** Points the panel at a message: creates the UI if needed, refreshes, and shows it. */
@@ -80,7 +99,7 @@ export class DirectorInterface {
 	/** Repaints the header, toggle state, and outline box for the current message. */
 	refreshContent() {
 		this.header.text(`🎬 Director${Number.isInteger(this.mesId) ? ` — message ${this.mesId}` : ""}`);
-		this.toggle.prop("checked", isEnabled());
+		this.updateEnableToggle();
 
 		this.contentArea.empty();
 		const textarea = $('<textarea class="text_pole director_interface_textarea" placeholder="No outline yet — press Regenerate to create one."></textarea>');

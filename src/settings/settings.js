@@ -297,14 +297,12 @@ export function isEnabled() {
 }
 
 /**
- * Enables/disables the director and syncs every toggle that reflects it: the settings checkbox and
- * the interface panel's global toggle. Single source of truth, so a change from either side keeps
- * both in sync.
+ * Enables/disables the director and syncs the settings checkbox. The interface panel's on-off
+ * switch syncs itself (DirectorInterface.updateEnableToggle) when clicked or reopened.
  * @param {boolean} enabled
  */
 export async function toggleExtension(enabled) {
 	extensionSettings.enabled = !!enabled;
 	$("#director_enabled").prop("checked", extensionSettings.enabled);
-	$("#director_global_toggle").prop("checked", extensionSettings.enabled);
 	saveSettingsDebounced();
 }
