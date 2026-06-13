@@ -318,7 +318,9 @@ async function buildDirectorMessages(ctx, mesNum, conn, pendingUserText = "") {
 	// directly, so SillyTavern won't substitute it for us.
 	const rawPrompt = String(extensionSettings.directorPrompt || "").trim();
 	const promptContent = typeof ctx.substituteParams === "function" ? String(ctx.substituteParams(rawPrompt)) : rawPrompt;
-	const instruction = { role: directorRole, content: promptContent };
+	// SillyTavern merges this trailing instruction into the preceding user turn, so wrap it in
+	// <director> tags to keep the director's ask clearly separated from the user's roleplay text.
+	const instruction = { role: directorRole, content: `<director>\n${promptContent}\n</director>` };
 	// The user's just-sent message isn't in the chat yet at GENERATION_AFTER_COMMANDS time; it's
 	// passed in so the director directs based on it. Added as the final user turn before the instruction.
 	const pending = String(pendingUserText || "").trim();
