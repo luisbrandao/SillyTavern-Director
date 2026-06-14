@@ -6,7 +6,7 @@ import { debug, warn } from "../../lib/utils.js";
 // registered here.
 const PROMPT_FILES = [
 	"Default.txt",
-	"Concise.txt",
+	"LongDetailed.txt",
 	"Slow Burn.txt",
 	"Plot Driver.txt",
 	"Character Voice.txt",
