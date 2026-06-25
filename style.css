@@ -137,7 +137,7 @@
 #directorEnhancedInterface .director_interface_textarea {
 	flex: 1;
 	width: 100%;
-	min-height: 24em;
+	min-height: 30em;
 	resize: none;
 	white-space: pre-wrap;
 	word-wrap: break-word;
