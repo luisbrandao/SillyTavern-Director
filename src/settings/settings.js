@@ -112,6 +112,34 @@ function getActivePromptProfile() {
 	return (extensionSettings.promptProfiles ?? []).find((p) => p?.name === name) ?? null;
 }
 
+/** @returns {string[]} The saved prompt-profile names (for populating quick-access dropdowns). */
+export function listPromptProfileNames() {
+	return (extensionSettings.promptProfiles ?? []).map((p) => p?.name).filter(Boolean);
+}
+
+/** @returns {string} The active prompt-profile name, or "" for free-form. */
+export function getActivePromptProfileName() {
+	return String(extensionSettings.activePromptProfile ?? "");
+}
+
+/**
+ * Switches the active prompt profile and loads its prompt into the effective director prompt. The
+ * single source of truth for selecting a profile — both the settings panel and the interface's
+ * quick-access dropdown call this, so every known widget is kept in sync here. Selecting "" (free-form)
+ * keeps the current prompt text. Saves settings.
+ * @param {string} name
+ */
+export function applyActivePromptProfile(name) {
+	extensionSettings.activePromptProfile = String(name ?? "");
+	const profile = getActivePromptProfile();
+	if (profile) extensionSettings.directorPrompt = String(profile.prompt ?? "");
+	// Keep every widget that mirrors this state in sync (settings panel + interface dropdown), if present.
+	$("#director_prompt").val(extensionSettings.directorPrompt ?? "");
+	$("#director_prompt_profile").val(extensionSettings.activePromptProfile ?? "");
+	$("#directorInterfaceProfileSelect").val(extensionSettings.activePromptProfile ?? "");
+	saveSettingsDebounced();
+}
+
 /** Prompts for a profile name; returns a trimmed, unique name or null if cancelled/invalid. */
 async function askPromptProfileName(title, initial = "") {
 	const input = await callGenericPopup(title, POPUP_TYPE.INPUT, initial);
@@ -174,15 +202,7 @@ function registerListeners() {
 		saveSettingsDebounced();
 	});
 	$("#director_prompt_profile").on("change", function () {
-		const name = String($(this).val());
-		extensionSettings.activePromptProfile = name;
-		const profile = getActivePromptProfile();
-		// Switching to a profile loads its prompt; switching to free-form keeps the current text.
-		if (profile) {
-			extensionSettings.directorPrompt = String(profile.prompt ?? "");
-			$("#director_prompt").val(extensionSettings.directorPrompt);
-		}
-		saveSettingsDebounced();
+		applyActivePromptProfile(String($(this).val()));
 	});
 	$("#director_prompt_profile_new").on("click", async function () {
 		const name = await askPromptProfileName("Name for the new director prompt profile:");

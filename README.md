@@ -109,8 +109,13 @@ button in the UI.
 Each message has a **🎬 Show Director** button (in the message action row) and, when an outline
 exists, a collapsible **🎬 Director** preview block beneath it.
 
-- **Show Director** opens a single editable window: edit the outline and **Save**, **Regenerate**
-  (refills the box in place), or **Delete**.
+- **Show Director** opens a docked, draggable side panel for that message's outline:
+  - **◀ / ▶** in the header step to the previous / next message without closing the panel.
+  - Edits **auto-save** as you type — there's no Save button.
+  - A **Prompt profile** dropdown switches the active director prompt on the fly (same profiles as the
+    settings panel), so you can pick a wording before pressing **Regenerate**.
+  - **Regenerate** refills the box in place; **Delete** removes the outline.
+  - A green/red toggle enables/disables the Director globally.
 - The preview block has inline **regenerate / edit / delete** controls (same actions).
 
 ## Slash commands

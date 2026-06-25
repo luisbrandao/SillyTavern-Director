@@ -77,11 +77,43 @@
 	flex-wrap: wrap;
 }
 
-/* Green/red global on-off switch in the header (ported from the Tracker interface). */
+/* Prev/next message navigation in the header (ported from the Tracker interface). */
+#directorEnhancedInterface #directorInterfaceNav {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+#directorEnhancedInterface #directorInterfaceNav i {
+	cursor: pointer;
+	font-size: 1.1em;
+	opacity: 0.85;
+}
+
+#directorEnhancedInterface #directorInterfaceNav i:hover {
+	opacity: 1;
+	color: var(--SmartThemeQuoteColor);
+}
+
+#directorEnhancedInterface #directorInterfaceNav i.disabled {
+	opacity: 0.3;
+	pointer-events: none;
+}
+
+/* Quick-access prompt-profile picker, under the header line. */
+#directorEnhancedInterface #directorInterfaceProfileBar label {
+	font-size: 0.9em;
+	white-space: nowrap;
+	opacity: 0.8;
+}
+
+/* Green/red global on-off switch in the header (ported from the Tracker interface).
+   margin-left: auto pushes it to the far right, past the nav + title. */
 #directorEnhancedInterface #directorInterfaceEnableToggle {
 	display: flex;
 	align-items: center;
 	gap: 5px;
+	margin-left: auto;
 	cursor: pointer;
 	font-size: 0.9em;
 	white-space: nowrap;
