@@ -63,12 +63,6 @@
 	flex-direction: column;
 	padding: 10px;
 	gap: 10px;
-	/* User-resizable via the bottom-right corner handle. Works because .draggable sets
-	   overflow:hidden (CSS resize is a no-op only when overflow is visible) and doesn't depend on
-	   the global MovingUI setting. A default height gives the drag something to grow/shrink from;
-	   .draggable's min/max (100px .. 90vh/90vw) bound it. */
-	resize: both;
-	height: 75vh;
 }
 
 #directorEnhancedInterface #directorInterfaceHeader {
@@ -143,8 +137,7 @@
 #directorEnhancedInterface .director_interface_textarea {
 	flex: 1;
 	width: 100%;
-	/* Small min so the panel can shrink; the textarea flexes to fill whatever height the panel has. */
-	min-height: 6em;
+	min-height: 24em;
 	resize: none;
 	white-space: pre-wrap;
 	word-wrap: break-word;
