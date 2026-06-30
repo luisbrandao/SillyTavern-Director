@@ -2,6 +2,7 @@ import { chat, streamingProcessor } from "../../../../../script.js";
 import { isEnabled } from "./settings/settings.js";
 import { prepareDirector, attachPendingOutline, clearInjects } from "./director.js";
 import { DirectorPreviewManager } from "./ui/directorPreviewManager.js";
+import { DirectorInterface } from "./ui/directorInterface.js";
 import { debug } from "../lib/utils.js";
 
 const ALLOWED_TYPES = ["normal", "continue", "swipe", "regenerate", "group_chat"];
@@ -43,6 +44,8 @@ async function onCharacterMessageRendered(mesId) {
 	// still refreshes the final preview. With streaming off, this is the attach point.
 	await attachPendingOutline(mesId);
 	DirectorPreviewManager.updatePreview(mesId);
+	// If the side panel is tailing the chat, advance it onto this fresh reply (with its new outline).
+	DirectorInterface.followToMessage(mesId);
 }
 
 /**

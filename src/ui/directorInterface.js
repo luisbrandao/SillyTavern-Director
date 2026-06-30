@@ -20,6 +20,14 @@ export class DirectorInterface {
 		DirectorInterface.instance = this;
 		this.container = null;
 		this.mesId = null;
+		// "Tail" mode: true while the panel sits on the last message, so a new generation auto-advances
+		// it to the fresh reply. Manually navigating back to an older message turns it off.
+		this.following = false;
+	}
+
+	/** Recomputes tail mode: are we currently parked on the last non-system message? */
+	updateFollowing() {
+		this.following = Number.isInteger(this.mesId) && this.mesId === getLastNonSystemMessageIndex();
 	}
 
 	/** Builds the panel DOM once, wires its controls, and makes it draggable. */
@@ -131,6 +139,8 @@ export class DirectorInterface {
 		if (target === -1) return;
 		this.flushPendingSave();
 		this.mesId = target;
+		// Resume tail mode only if the user navigated to the last message; stop following otherwise.
+		this.updateFollowing();
 		this.refreshContent();
 	}
 
@@ -158,6 +168,8 @@ export class DirectorInterface {
 	openFor(mesId) {
 		if (Number.isInteger(mesId)) this.mesId = mesId;
 		if (!this.container) this.createUI();
+		// Opening on the last message starts in tail mode; opening on an older one does not.
+		this.updateFollowing();
 		this.refreshContent();
 		this.container.show();
 	}
@@ -255,6 +267,23 @@ export class DirectorInterface {
 	static refreshIfOpen(mesId) {
 		const ui = DirectorInterface.instance;
 		if (ui && ui.container && ui.mesId === mesId) ui.refreshContent();
+	}
+
+	/**
+	 * Auto-advance the open panel onto a freshly rendered message — but only while it's in tail mode
+	 * (parked on what was the last message). Called when a new bot reply renders, so the panel keeps
+	 * up with the chat instead of stranding the user on the previous message. If the user has navigated
+	 * back to an older outline, tail mode is off and the panel stays put.
+	 * @param {number} mesId
+	 */
+	static followToMessage(mesId) {
+		const ui = DirectorInterface.instance;
+		if (!ui || !ui.container || !ui.following) return;
+		if (!Number.isInteger(mesId) || !chat[mesId]) return;
+		if (ui.mesId !== mesId) ui.flushPendingSave();
+		ui.mesId = mesId;
+		ui.updateFollowing();
+		ui.refreshContent();
 	}
 
 	/**
