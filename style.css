@@ -100,11 +100,13 @@
 	pointer-events: none;
 }
 
-/* Quick-access prompt-profile picker, under the header line. */
-#directorEnhancedInterface #directorInterfaceProfileBar label {
+/* Quick-access prompt-profile / LLM-profile pickers, under the header line. A fixed-width label
+   keeps the two dropdowns left-aligned with each other. */
+#directorEnhancedInterface .director-picker-bar label {
 	font-size: 0.9em;
 	white-space: nowrap;
 	opacity: 0.8;
+	flex: 0 0 6.5em;
 }
 
 /* Green/red global on-off switch in the header (ported from the Tracker interface).

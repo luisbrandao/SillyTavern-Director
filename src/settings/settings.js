@@ -140,6 +140,98 @@ export function applyActivePromptProfile(name) {
 	saveSettingsDebounced();
 }
 
+/**
+ * @returns {{value: string, label: string}[]} Director connection-profile options, "current" first
+ * (for populating the settings + interface connection dropdowns from one source).
+ */
+export function listConnectionProfileOptions() {
+	const options = [{ value: "current", label: "Use current connection" }];
+	try {
+		const ctx = getContext();
+		const profiles = ctx?.extensionSettings?.connectionManager?.profiles ?? [];
+		for (const p of profiles) {
+			if (p?.name) options.push({ value: p.name, label: p.name });
+		}
+	} catch (e) {
+		error("Failed to load connection profiles:", e);
+	}
+	return options;
+}
+
+/** @returns {string} The selected director connection-profile name, or "current". */
+export function getSelectedConnectionProfileName() {
+	return String(extensionSettings.selectedProfile ?? "current");
+}
+
+/**
+ * Switches the director connection profile. The single source of truth — both the settings panel and
+ * the interface's quick-access dropdown call this, so every mirroring widget stays in sync. Switching
+ * the connection resets the completion preset to "current" (presets are API-specific to a profile).
+ * Saves settings.
+ * @param {string} name
+ */
+export function applySelectedConnectionProfile(name) {
+	extensionSettings.selectedProfile = String(name ?? "current");
+	extensionSettings.selectedCompletionPreset = "current";
+	// Keep every widget that mirrors this state in sync (settings panel + interface dropdown), if present.
+	$("#director_connection_profile").val(extensionSettings.selectedProfile);
+	$("#directorInterfaceConnectionSelect").val(extensionSettings.selectedProfile);
+	if ($("#director_completion_preset").length) populateCompletionPresets();
+	saveSettingsDebounced();
+}
+
+/**
+ * Reloads the built-in prompt profiles from their shipped prompts/*.txt files. A profile is "built-in"
+ * iff its name matches a shipped file; same-named profiles are overwritten and missing built-ins are
+ * re-added. Profiles the user created (no matching .txt — e.g. "test01") are never touched. If the
+ * active profile is a built-in, the editor reloads from its refreshed text.
+ */
+async function restoreBuiltinPromptProfiles() {
+	const builtins = await loadBuiltinPromptProfiles();
+	if (!builtins.length) {
+		window.toastr?.warning?.("No built-in director prompts could be loaded from disk.");
+		return;
+	}
+
+	const confirmed = await callGenericPopup(
+		`Reload the ${builtins.length} built-in prompt(s) from their .txt files? This overwrites edits to built-in profiles and re-adds any you deleted. Profiles you created yourself are left untouched.`,
+		POPUP_TYPE.CONFIRM,
+	);
+	if (!confirmed) return;
+
+	if (!Array.isArray(extensionSettings.promptProfiles)) extensionSettings.promptProfiles = [];
+	if (!Array.isArray(extensionSettings.seededPromptProfiles)) extensionSettings.seededPromptProfiles = [];
+
+	let updated = 0;
+	let added = 0;
+	for (const builtin of builtins) {
+		const existing = extensionSettings.promptProfiles.find((p) => p?.name === builtin.name);
+		if (existing) {
+			if (existing.prompt !== builtin.prompt) {
+				existing.prompt = builtin.prompt;
+				updated++;
+			}
+		} else {
+			extensionSettings.promptProfiles.push({ name: builtin.name, prompt: builtin.prompt });
+			added++;
+		}
+		if (!extensionSettings.seededPromptProfiles.includes(builtin.name)) {
+			extensionSettings.seededPromptProfiles.push(builtin.name);
+		}
+	}
+
+	// If the active profile is a built-in, mirror its refreshed text into the editor + effective prompt.
+	const active = getActivePromptProfile();
+	if (active) {
+		extensionSettings.directorPrompt = String(active.prompt ?? "");
+		$("#director_prompt").val(extensionSettings.directorPrompt);
+	}
+
+	populatePromptProfiles();
+	saveSettingsDebounced();
+	window.toastr?.success?.(`Built-in prompts reloaded (${updated} updated, ${added} re-added). Your own profiles were left alone.`);
+}
+
 /** Prompts for a profile name; returns a trimmed, unique name or null if cancelled/invalid. */
 async function askPromptProfileName(title, initial = "") {
 	const input = await callGenericPopup(title, POPUP_TYPE.INPUT, initial);
@@ -156,15 +248,8 @@ async function askPromptProfileName(title, initial = "") {
 function populateConnectionProfiles() {
 	const select = $("#director_connection_profile");
 	select.empty();
-	select.append($("<option>").val("current").text("Use current connection"));
-	try {
-		const ctx = getContext();
-		const profiles = ctx?.extensionSettings?.connectionManager?.profiles ?? [];
-		for (const p of profiles) {
-			if (p?.name) select.append($("<option>").val(p.name).text(p.name));
-		}
-	} catch (e) {
-		error("Failed to load connection profiles:", e);
+	for (const opt of listConnectionProfileOptions()) {
+		select.append($("<option>").val(opt.value).text(opt.label));
 	}
 	select.val(extensionSettings.selectedProfile);
 }
@@ -240,6 +325,7 @@ function registerListeners() {
 		populatePromptProfiles();
 		saveSettingsDebounced();
 	});
+	$("#director_prompt_profile_restore").on("click", restoreBuiltinPromptProfiles);
 	$("#director_prompt_role").on("change", function () {
 		extensionSettings.directorRole = String($(this).val());
 		saveSettingsDebounced();
@@ -249,10 +335,7 @@ function registerListeners() {
 		saveSettingsDebounced();
 	});
 	$("#director_connection_profile").on("change", function () {
-		extensionSettings.selectedProfile = String($(this).val());
-		extensionSettings.selectedCompletionPreset = "current";
-		populateCompletionPresets();
-		saveSettingsDebounced();
+		applySelectedConnectionProfile(String($(this).val()));
 	});
 	$("#director_completion_preset").on("change", function () {
 		extensionSettings.selectedCompletionPreset = String($(this).val());

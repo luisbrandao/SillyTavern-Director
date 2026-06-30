@@ -2,7 +2,7 @@ import { animation_duration, chat } from "../../../../../../script.js";
 import { dragElement } from "../../../../../../scripts/RossAscends-mods.js";
 import { loadMovingUIState } from "../../../../../../scripts/power-user.js";
 import { callGenericPopup, POPUP_TYPE } from "../../../../../../scripts/popup.js";
-import { isEnabled, toggleExtension, listPromptProfileNames, getActivePromptProfileName, applyActivePromptProfile } from "../settings/settings.js";
+import { isEnabled, toggleExtension, listPromptProfileNames, getActivePromptProfileName, applyActivePromptProfile, listConnectionProfileOptions, getSelectedConnectionProfileName, applySelectedConnectionProfile } from "../settings/settings.js";
 import { getLastNonSystemMessageIndex, getPreviousNonSystemMessageIndex, getNextNonSystemMessageIndex, error } from "../../lib/utils.js";
 import { saveDirectorToMessage, regenerateDirectorForMessage, removeDirectorFromMessage } from "../director.js";
 
@@ -45,10 +45,15 @@ export class DirectorInterface {
 				<span class="director-enable-label">Enabled</span>
 			</div>
 		</div>`;
-		// Quick-access prompt-profile picker: switches the active director prompt without opening settings.
-		const profileBar = `<div id="directorInterfaceProfileBar" class="flex-container alignItemsCenter flexGap5">
+		// Quick-access pickers: switch the active director prompt and connection (LLM) profile without
+		// opening settings. Both mirror the settings-panel dropdowns and write through the same setters.
+		const profileBar = `<div id="directorInterfaceProfileBar" class="director-picker-bar flex-container alignItemsCenter flexGap5">
 			<label for="directorInterfaceProfileSelect">Prompt profile</label>
 			<select id="directorInterfaceProfileSelect" class="text_pole flex1"></select>
+		</div>`;
+		const connectionBar = `<div id="directorInterfaceConnectionBar" class="director-picker-bar flex-container alignItemsCenter flexGap5">
+			<label for="directorInterfaceConnectionSelect">LLM profile</label>
+			<select id="directorInterfaceConnectionSelect" class="text_pole flex1"></select>
 		</div>`;
 		const contents = `<div id="directorInterfaceContents" class="scrollY"></div>`;
 		// No Save button — the outline auto-saves as you type.
@@ -59,7 +64,7 @@ export class DirectorInterface {
 
 		const el = $(template);
 		el.attr("id", "directorEnhancedInterface").removeClass("zoomed_avatar").addClass("draggable").empty();
-		el.append(controlBarHtml).append(headerBar).append(profileBar).append(contents).append(footer);
+		el.append(controlBarHtml).append(headerBar).append(profileBar).append(connectionBar).append(contents).append(footer);
 		$("#movingDivs").append(el);
 
 		loadMovingUIState();
@@ -74,6 +79,7 @@ export class DirectorInterface {
 		this.prevButton = el.find("#directorInterfacePrev");
 		this.nextButton = el.find("#directorInterfaceNext");
 		this.profileSelect = el.find("#directorInterfaceProfileSelect");
+		this.connectionSelect = el.find("#directorInterfaceConnectionSelect");
 		this.contentArea = el.find("#directorInterfaceContents");
 		this.regenerateButton = el.find("#directorInterfaceRegenerate");
 		this.deleteButton = el.find("#directorInterfaceDelete");
@@ -85,6 +91,7 @@ export class DirectorInterface {
 		this.prevButton.on("click", () => this.navigate(-1));
 		this.nextButton.on("click", () => this.navigate(1));
 		this.profileSelect.on("change", () => applyActivePromptProfile(String(this.profileSelect.val())));
+		this.connectionSelect.on("change", () => applySelectedConnectionProfile(String(this.connectionSelect.val())));
 		this.regenerateButton.on("click", () => this.regenerateOutline());
 		this.deleteButton.on("click", () => this.removeOutline());
 		this.updateEnableToggle();
@@ -99,6 +106,16 @@ export class DirectorInterface {
 			this.profileSelect.append($("<option>").val(name).text(name));
 		}
 		this.profileSelect.val(getActivePromptProfileName());
+	}
+
+	/** (Re)fills the quick-access connection (LLM) profile dropdown and selects the active one. */
+	populateConnections() {
+		if (!this.connectionSelect) return;
+		this.connectionSelect.empty();
+		for (const opt of listConnectionProfileOptions()) {
+			this.connectionSelect.append($("<option>").val(opt.value).text(opt.label));
+		}
+		this.connectionSelect.val(getSelectedConnectionProfileName());
 	}
 
 	/**
@@ -151,6 +168,7 @@ export class DirectorInterface {
 		this.updateEnableToggle();
 		this.updateNavButtons();
 		this.populateProfiles();
+		this.populateConnections();
 
 		this.contentArea.empty();
 		const textarea = $('<textarea class="text_pole director_interface_textarea" placeholder="No outline yet — press Regenerate to create one."></textarea>');
