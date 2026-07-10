@@ -9,9 +9,11 @@
 const directorPrompt = "You are a scene director. Consider the state of the world and respond with only an outline of the actions that should happen on the next turn.";
 
 const injectionTemplate = `<director>
-For your response, follow the outline for the scene:
+Direction for your next reply. It covers exactly one beat — the full scope of your turn:
 
 {{outline}}
+
+Render only what this direction describes, then stop — even if the scene feels unfinished. An unfinished scene is correct: the next move belongs to {{user}}. Do not continue to later events, resolve open threads, or close the scene out. A single beat is usually brief — a few paragraphs — longer only where the direction says to linger.
 </director>`;
 
 //#endregion
